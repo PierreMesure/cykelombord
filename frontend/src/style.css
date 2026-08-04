@@ -1,0 +1,31 @@
+:root {
+  color: #17352a;
+  background: #f3f1e8;
+  font-family: system-ui, sans-serif;
+  font-synthesis: none;
+}
+
+body {
+  display: grid;
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  place-items: center;
+}
+
+main {
+  width: min(40rem, calc(100% - 3rem));
+}
+
+.eyebrow {
+  color: #537568;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin-block: 0.25rem 1rem;
+  font-size: clamp(2.5rem, 10vw, 5rem);
+  line-height: 0.95;
+}
