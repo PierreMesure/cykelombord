@@ -60,6 +60,15 @@ A minimal normalizer joins an incomplete lower-case continuation left at a colum
 generated Markdown, checksum, and source URL remain review inputs; structured rules still require
 human approval.
 
+### Ruleset representation
+
+YAML is the canonical ruleset format because policy reviewers can read it directly in GitHub, retain
+short explanatory notes, and make narrow edits without rewriting a generated artifact. A strict
+Pydantic schema rejects unknown keys and inconsistent values. The checked-in source carries a PDF
+edition, URL, checksum, page number, and heading locator for every policy. A later GTFS build should
+resolve its human-readable selectors to feed identifiers and compile the result to JSON for routing;
+that JSON is a build artifact, not an authoring format.
+
 ### GTFS bicycle metadata
 
 GTFS provides `bikes_allowed` at trip level and `bikes_allowed`/`bikes_allowed`-related extensions

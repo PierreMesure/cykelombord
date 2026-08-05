@@ -60,11 +60,12 @@ Stop for a manual Markdown review before extracting rules.
 
 ## Milestone 2 — Convert Markdown into reviewed rules
 
-Status: not started.
+Status: initial schema and June 2026 source extraction implemented; GTFS resolution and review
+reporting remain to be implemented.
 
 1. Define a versioned Pydantic schema for operators, modes, routes, stop corridors, direction,
    dates, fees, reservations, capacity, packing, exceptions, and evidence.
-2. Parse the guide Markdown into draft rules while retaining source sections and excerpts.
+2. Extract the guide Markdown into draft rules while retaining source pages and headings.
 3. Generate a review report for ambiguous statements and rules without stable selectors.
 4. Add a manually maintained override file for corrections that cannot be derived safely.
 5. Validate enums, date ranges, rule priority, overlapping selectors, and source attribution.

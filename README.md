@@ -4,8 +4,9 @@ Cykel på tåg aims to plan Swedish public-transport journeys on which a trave
 assembled bicycle. It will combine Trafiklab timetable data with structured rules derived from
 Naturskyddsföreningen's regularly updated guide.
 
-The guide downloader and PDF-to-Markdown conversion are implemented. Rule extraction, GTFS
-downloading, pruning, validation, routing, and the planner interface are not yet implemented.
+The guide downloader, PDF-to-Markdown conversion, and a first source-extracted YAML ruleset are
+implemented.
+GTFS downloading, pruning, validation, routing, and the planner interface are not yet implemented.
 
 ## Repository layout
 
@@ -15,6 +16,7 @@ downloading, pruning, validation, routing, and the planner interface are not yet
 │   ├── source/       # Local source guide and downloaded GTFS (gitignored)
 │   └── generated/    # Generated Markdown, rules, and routing data (gitignored)
 ├── frontend/         # Vite and TypeScript web application
+├── rules/            # Reviewed, human-authored bicycle policy rules
 ├── src/cykelpatag/  # Python data-pipeline package
 ├── tests/            # Python tests
 ├── PLAN.md          # Chosen implementation plan
@@ -73,10 +75,23 @@ data/generated/guide-source.json
 ```
 
 The command fails instead of guessing if the landing page exposes multiple equally plausible Swedish
-guide PDFs. `guide.md` deliberately preserves the extraction for human review; converting it into
-structured bicycle rules is the next milestone. PyMuPDF4LLM retains the guide's two-column reading
-order and regional-policy table as Markdown. A small normalizer joins only incomplete lower-case
-continuations at a column boundary.
+guide PDFs. `guide.md` deliberately preserves the extraction for human review. PyMuPDF4LLM retains
+the guide's two-column reading order and regional-policy table as Markdown. A small normalizer joins
+only incomplete lower-case continuations at a column boundary.
+
+## Bicycle rules
+
+[`rules/bike-rules.yaml`](rules/bike-rules.yaml) is the human-readable source of truth for the
+initial policy extraction. It contains only facts explicitly stated by the June 2026 guide and links
+each rule back to a page and heading. The build will later resolve these human-facing names against a
+specific GTFS feed and compile the validated result to JSON for the web app.
+
+The schema and repeatable extraction instructions are in [`RULES_SPEC.md`](RULES_SPEC.md). Validate
+the checked-in ruleset with:
+
+```bash
+uv run cykelpatag rules validate
+```
 
 ## Data and attribution
 
