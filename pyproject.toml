@@ -15,6 +15,11 @@ dependencies = [
 [project.scripts]
 cykelpatag = "cykelpatag.cli:app"
 
+[project.optional-dependencies]
+guide = [
+    "pymupdf4llm>=1.27.2.1,<2",
+]
+
 [dependency-groups]
 dev = [
     "mypy>=1.17,<2",

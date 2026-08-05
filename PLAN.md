@@ -37,15 +37,16 @@ No guide conversion or GTFS pruning code belongs in this milestone.
 
 ## Milestone 1 — Convert the guide to Markdown
 
-Status: not started.
+Status: implemented; awaiting a manual review of the current extraction.
 
 1. Download or place the current guide PDF in `data/source/`.
 2. Record its URL, publication date, retrieval time, and checksum.
-3. Add a Python command that invokes LiteParse exactly once to extract the born-digital PDF to an
-   intermediate text file, normally using `--no-ocr`.
-4. Convert that intermediate text deterministically into readable Markdown, preserving headings,
-   operator sections, lists, tables, page references where available, and original wording.
-5. Accept an already extracted `.txt` source as an input so repeated LiteParse work is unnecessary.
+3. Add a Python command that invokes the optional PyMuPDF4LLM dependency once on the born-digital
+   PDF, without OCR or image extraction.
+4. Write PyMuPDF4LLM's layout-aware Markdown output, preserving headings, operator sections, lists,
+   tables, page references where available, and original wording.
+5. Use the generated Markdown as the sole input to the next milestone so it is never necessary to
+   parse the same PDF again during rule extraction.
 6. Test stable output using small fixtures and golden files.
 
 Expected outputs:

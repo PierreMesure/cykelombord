@@ -1,0 +1,17 @@
+{
+  "retrieved_at": "2026-08-05T06:12:11.877722+00:00",
+  "page_url": "https://r.jina.ai/https://lund.naturskyddsforeningen.se/cykling/cykel-pa-tag/",
+  "canonical_page_url": "https://lund.naturskyddsforeningen.se/cykling/cykel-pa-tag/",
+  "page_etag": null,
+  "pdf_url": "https://lund.naturskyddsforeningen.se/wp-content/uploads/sites/130/2026/06/Cykel_pa_Tag_2026-06-07.pdf",
+  "pdf_content_type": "application/pdf",
+  "pdf_sha256": "8af331437d2a50eba092ffdf7a76b6b28c1ed77416969ccf2f09549c7821bef9",
+  "pdf_bytes": 2819243,
+  "extractor": {
+    "package": "pymupdf4llm",
+    "format": "markdown",
+    "images": false,
+    "header": false,
+    "footer": false
+  }
+}

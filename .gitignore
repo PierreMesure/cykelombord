@@ -17,9 +17,6 @@ frontend/dist/
 
 # Generated and downloaded data
 data/source/*
-!data/source/.gitkeep
-data/generated/*
-!data/generated/.gitkeep
 
 # Editors and operating systems
 .DS_Store

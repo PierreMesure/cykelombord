@@ -4,9 +4,8 @@ Cykel på tåg aims to plan Swedish public-transport journeys on which a trave
 assembled bicycle. It will combine Trafiklab timetable data with structured rules derived from
 Naturskyddsföreningen's regularly updated guide.
 
-The repository currently contains the first project skeleton only. Guide conversion, rule
-extraction, GTFS downloading, pruning, validation, routing, and the planner interface have not yet
-been implemented.
+The guide downloader and PDF-to-Markdown conversion are implemented. Rule extraction, GTFS
+downloading, pruning, validation, routing, and the planner interface are not yet implemented.
 
 ## Repository layout
 
@@ -24,8 +23,12 @@ been implemented.
 
 ## Local setup
 
-Prerequisites are Python 3.12, [uv](https://docs.astral.sh/uv/), Node.js 22, npm, and the
-[`lit` CLI](https://www.npmjs.com/package/@llamaindex/liteparse) for guide extraction.
+Prerequisites are Python 3.12, [uv](https://docs.astral.sh/uv/), Node.js 22, and npm. The optional
+`guide` extra installs [PyMuPDF4LLM](https://pymupdf.readthedocs.io/en/latest/pymupdf4llm/) only on
+machines that update the source guide.
+
+PyMuPDF4LLM and PyMuPDF are available under AGPL v3 or a commercial licence. Confirm that the
+project's eventual distribution licence is compatible before publishing the application.
 
 ```bash
 cp .env.example .env
@@ -49,6 +52,31 @@ Start the placeholder frontend with:
 ```bash
 npm --prefix frontend run dev
 ```
+
+## Update the bicycle guide
+
+The guide PDF has a versioned, unstable URL. The command below fetches the stable landing page through
+`r.jina.ai`, selects the Swedish `Cykel_pa_Tag_*.pdf` link with a defensive regular expression,
+downloads it from Naturskyddsföreningen, and runs PyMuPDF4LLM's layout-aware Markdown conversion.
+Install the optional extractor only when this command is needed:
+
+```bash
+uv sync --extra guide
+uv run cykelpatag guide update
+```
+
+It writes the downloaded PDF to `data/source/cykel-pa-tag.pdf` and these generated review inputs:
+
+```text
+data/generated/guide.md
+data/generated/guide-source.json
+```
+
+The command fails instead of guessing if the landing page exposes multiple equally plausible Swedish
+guide PDFs. `guide.md` deliberately preserves the extraction for human review; converting it into
+structured bicycle rules is the next milestone. PyMuPDF4LLM retains the guide's two-column reading
+order and regional-policy table as Markdown. A small normalizer joins only incomplete lower-case
+continuations at a column boundary.
 
 ## Data and attribution
 

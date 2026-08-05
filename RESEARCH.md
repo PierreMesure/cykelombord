@@ -41,6 +41,25 @@ distinguish at least:
 Extraction can accelerate transcription, but rules should not be published without human review.
 Natural-language policy contains exceptions that cannot safely be inferred from headings alone.
 
+### PDF-to-Markdown conversion
+
+LiteParse was initially evaluated because it is compact and exposes text coordinates. On the 2026
+guide it interleaved two-column prose and, more seriously, flattened the regional-policy table by
+visual column rather than by row. Its raw coordinates were intact, but its generic Markdown renderer
+was not safe as a policy source.
+
+PyMuPDF4LLM 1.28.0 was tested on the same PDF. Its layout-aware renderer preserved the left-to-right
+reading order and produced the regional policy as a four-column Markdown table with correctly aligned
+Skåne, Småland/Krösatåg, Mälardalen, and Inlandsbanan rows. It is selected as an optional `guide`
+dependency. The stack is substantially larger because it includes the PyMuPDF layout engine and ONNX
+runtime, but it runs only during occasional guide updates, never in the GTFS or browser pipelines.
+PyMuPDF and PyMuPDF4LLM are AGPL v3 or commercially licensed, so the project's eventual distribution
+licence must be compatible.
+
+A minimal normalizer joins an incomplete lower-case continuation left at a column boundary. The PDF,
+generated Markdown, checksum, and source URL remain review inputs; structured rules still require
+human approval.
+
 ### GTFS bicycle metadata
 
 GTFS provides `bikes_allowed` at trip level and `bikes_allowed`/`bikes_allowed`-related extensions
