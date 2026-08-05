@@ -223,6 +223,53 @@ def test_temporal_prohibition_is_deferred_from_all_date_pruning() -> None:
     ]
 
 
+def test_pruning_drops_transfers_referencing_removed_trips(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    source.mkdir()
+    names = _fixture_gtfs(source)
+    _write_csv(
+        source / "transfers.txt",
+        ["from_stop_id", "to_stop_id", "transfer_type", "from_trip_id", "to_trip_id"],
+        [
+            {
+                "from_stop_id": "alpha",
+                "to_stop_id": "beta",
+                "transfer_type": "0",
+                "from_trip_id": "trip",
+                "to_trip_id": "trip",
+            },
+            {
+                "from_stop_id": "alpha",
+                "to_stop_id": "beta",
+                "transfer_type": "0",
+                "from_trip_id": "removed-trip",
+                "to_trip_id": "trip",
+            },
+        ],
+    )
+    names.add("transfers.txt")
+
+    output = tmp_path / "output"
+    counts, _ = _write_pruned_feed(
+        extracted_dir=source,
+        names=names,
+        output_dir=output,
+        route_ids={"route"},
+    )
+
+    assert counts["transfers.txt"] == 1
+    transfers = list(csv.DictReader((output / "transfers.txt").open(encoding="utf-8")))
+    assert transfers == [
+        {
+            "from_stop_id": "alpha",
+            "to_stop_id": "beta",
+            "transfer_type": "0",
+            "from_trip_id": "trip",
+            "to_trip_id": "trip",
+        }
+    ]
+
+
 def test_exact_reviewed_agency_alias_resolves_a_rule(tmp_path: Path) -> None:
     source = tmp_path / "source"
     source.mkdir()

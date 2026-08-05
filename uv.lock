@@ -61,6 +61,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "duckdb" },
+    { name = "gtfs-guru" },
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
@@ -84,6 +85,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "duckdb", specifier = ">=1.4,<2" },
+    { name = "gtfs-guru", specifier = "==0.9.3" },
     { name = "httpx", specifier = ">=0.28,<1" },
     { name = "pydantic", specifier = ">=2.11,<3" },
     { name = "pydantic-settings", specifier = ">=2.10,<3" },
@@ -136,6 +138,15 @@ version = "25.12.19"
 source = { registry = "https://pypi.org/simple" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e8/2d/d2a548598be01649e2d46231d151a6c56d10b964d94043a335ae56ea2d92/flatbuffers-25.12.19-py2.py3-none-any.whl", hash = "sha256:7634f50c427838bb021c2d66a3d1168e9d199b0607e6329399f04846d42e20b4", size = 26661, upload-time = "2025-12-19T23:16:13.622Z" },
+]
+
+[[package]]
+name = "gtfs-guru"
+version = "0.9.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/25/1d/511f58bb804bff7801770c179244fd7c30e2cfd53df4321c0f8f9a0c9b36/gtfs_guru-0.9.3.tar.gz", hash = "sha256:37bd3f5a4ab922b43507035b6e80f73a6c6f50e44e3265c97e7548b17cd29b1f", size = 244272, upload-time = "2026-02-05T07:18:31.086Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/73/fb/41cb2d421a814f15fb6909410815388ca55b80d25dd23ef9c2c48683fb0d/gtfs_guru-0.9.3-cp38-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f0c6c1a1bbfca7d21686c926d9da7014e2fcef91c311d5a778434d78e2b98bf6", size = 1798040, upload-time = "2026-02-05T07:18:28.803Z" },
 ]
 
 [[package]]

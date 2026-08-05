@@ -431,6 +431,20 @@ def _write_pruned_feed(
             "stops.txt": _count_query(connection, "SELECT count(*) FROM expanded_stops"),
         }
 
+        transfer_conditions = [
+            "from_stop_id IN (SELECT stop_id FROM expanded_stops)",
+            "to_stop_id IN (SELECT stop_id FROM expanded_stops)",
+        ]
+        if "transfers.txt" in names:
+            transfer_headers = set(_csv_headers(extracted_dir / "transfers.txt"))
+            for trip_field in ("from_trip_id", "to_trip_id"):
+                if trip_field in transfer_headers:
+                    transfer_conditions.append(
+                        f"({trip_field} IS NULL OR {trip_field} = '' OR {trip_field} IN "
+                        "(SELECT trip_id FROM keep_trips))"
+                    )
+        transfers_query = "SELECT * FROM transfers WHERE " + " AND ".join(transfer_conditions)
+
         optional_queries = {
             "calendar.txt": (
                 "SELECT * FROM calendar WHERE service_id IN (SELECT service_id FROM keep_trips)"
@@ -446,11 +460,7 @@ def _write_pruned_feed(
                 "SELECT * FROM shapes WHERE shape_id IN ("
                 "SELECT shape_id FROM keep_trips WHERE shape_id IS NOT NULL AND shape_id != '')"
             ),
-            "transfers.txt": (
-                "SELECT * FROM transfers WHERE from_stop_id IN "
-                "(SELECT stop_id FROM expanded_stops) "
-                "AND to_stop_id IN (SELECT stop_id FROM expanded_stops)"
-            ),
+            "transfers.txt": transfers_query,
             "pathways.txt": (
                 "SELECT * FROM pathways WHERE from_stop_id IN (SELECT stop_id FROM expanded_stops) "
                 "AND to_stop_id IN (SELECT stop_id FROM expanded_stops)"
