@@ -43,34 +43,18 @@ rules:
       - {page: 4, locator: "Regioner > Skåne > Öresundståg"}
       - {page: 8, locator: "Cykel på regionala tåg > Skåne"}
 
-  - id: krosatagen-electric
-    priority: 100
+  - id: krosatagen-general
+    priority: 50
     match:
       modes: [rail]
       agencies: [Krösatågen]
-      vehicle_types: [electric]
+      services: [Krösatåg]
     bicycle:
       permission: allowed
       bike_booking: unknown
       ticket_purchase: unknown
       fare: {kind: free}
-      capacity: {kind: exact, min: 6, max: 6, per: train}
-    evidence:
-      - {page: 4, locator: "Regioner > Småland > Krösatåg"}
-      - {page: 8, locator: "Cykel på regionala tåg > Småland (Krösatåg)"}
-
-  - id: krosatagen-diesel
-    priority: 100
-    match:
-      modes: [rail]
-      agencies: [Krösatågen]
-      vehicle_types: [diesel]
-    bicycle:
-      permission: allowed
-      bike_booking: unknown
-      ticket_purchase: unknown
-      fare: {kind: free}
-      capacity: {kind: exact, min: 2, max: 2, per: train}
+      capacity: {kind: range, min: 2, max: 6, per: train, note: "Depends on train type."}
     evidence:
       - {page: 4, locator: "Regioner > Småland > Krösatåg"}
       - {page: 8, locator: "Cykel på regionala tåg > Småland (Krösatåg)"}
@@ -92,65 +76,29 @@ rules:
     evidence:
       - {page: 5, locator: "Regioner > Östergötland > Krösatågen"}
 
-  - id: vasttag-commuter
+  - id: vasttrafik-rail
     priority: 100
     match:
       modes: [rail]
       agencies: [Västtrafik]
-      services: [Västtåg pendeltåg]
-      corridors: [Alingsås, Kungsbacka, Älvängen]
-    bicycle:
-      permission: conditional
-      bike_booking: unknown
-      ticket_purchase: unknown
-      fare: {kind: free}
-      capacity: {kind: exact, min: 6, max: 6, per: trainset}
-      conditions:
-        - {kind: time_window, description: "Not to or from Alingsås during peak traffic."}
-    evidence:
-      - {page: 4, locator: "Regioner > Västra Götaland > Västtåg pendeltåg"}
-      - {page: 8, locator: "Cykel på regionala tåg > Västra Götaland (Västtåg)"}
-
-  - id: vasttag-regional
-    priority: 100
-    match:
-      modes: [rail]
-      agencies: [Västtrafik]
-      services: [Västtåg regional]
     bicycle:
       permission: allowed
       bike_booking: unknown
       ticket_purchase: unknown
       fare: {kind: free}
-      capacity: {kind: exact, min: 2, max: 2, per: train}
+      capacity: {kind: range, min: 2, max: 6, per: train, note: "Six on commuter trainsets and two on other regional trains."}
     evidence:
+      - {page: 4, locator: "Regioner > Västra Götaland > Västtåg pendeltåg"}
       - {page: 4, locator: "Regioner > Västra Götaland > regionala Västtåg"}
       - {page: 8, locator: "Cykel på regionala tåg > Västra Götaland (Västtåg)"}
 
-  - id: vasttag-goteborg-alingsas-replacement-bus
-    priority: 200
-    match:
-      modes: [bus]
-      agencies: [Västtrafik]
-      corridors: ["Göteborg–Alingsås"]
-    bicycle:
-      permission: not_allowed
-      bike_booking: unknown
-      ticket_purchase: unknown
-      fare: {kind: unknown}
-      capacity: {kind: unspecified}
-      conditions:
-        - {kind: season, description: "Applies to rail-replacement buses during the Göteborg–Alingsås works in summer 2026."}
-    evidence:
-      - {page: 4, locator: "Regioner > Västra Götaland > banarbete Göteborg–Alingsås"}
-
   - id: kinnekulletaget
-    priority: 100
+    priority: 200
     match:
       modes: [rail]
       agencies: [Västtrafik]
-      services: [Kinnekulletåget]
-      corridors: ["Göteborg–Mariestad", "Göteborg–Hallsberg"]
+      # Reviewed mapping: ResRobot maps train 3302 to GTFS route/service 3000.
+      services: ["3000"]
     bicycle:
       permission: conditional
       bike_booking: unknown
@@ -166,7 +114,8 @@ rules:
     priority: 200
     match:
       modes: [rail]
-      agencies: [Västtrafik]
+      # Reviewed mapping: current ResRobot departures identify this corridor as SJ.
+      agencies: [SJ]
       corridors: ["Borås–Värnamo"]
     bicycle:
       permission: not_allowed
@@ -195,28 +144,12 @@ rules:
       - {page: 5, locator: "Regioner > Östergötland > Östgötapendeln"}
       - {page: 8, locator: "Cykel på regionala tåg > Östergötland"}
 
-  - id: ostgotapendeln-vatternrundan
-    priority: 200
-    match:
-      modes: [rail]
-      agencies: [Östgötatrafiken]
-      services: [Östgötapendeln]
-    bicycle:
-      permission: not_allowed
-      bike_booking: unknown
-      ticket_purchase: unknown
-      fare: {kind: unknown}
-      capacity: {kind: unspecified}
-      conditions:
-        - {kind: event_dates, description: "Bicycles are not allowed during the Vätternrundan cycling-race weekend."}
-    evidence:
-      - {page: 5, locator: "Regioner > Östergötland > Östgötapendeln"}
-
   - id: varmlandstrafiken-rail
     priority: 100
     match:
       modes: [rail]
       agencies: [Värmlandstrafiken]
+      agency_aliases: [Värmlandstrafik]
       corridors: ["Karlstad–Torsby", "Karlstad–Charlottenberg", "Karlstad–Kristinehamn", "Karlstad–Degerfors", "Karlstad–Örebro"]
     bicycle:
       permission: allowed
@@ -233,51 +166,12 @@ rules:
     match:
       modes: [rail]
       agencies: [Tåg i Bergslagen]
-      services: [Tåg i Bergslagen]
     bicycle:
       permission: conditional
       bike_booking: unknown
       ticket_purchase: advance_only
       fare: {kind: free}
-      capacity: {kind: variable, per: train, note: "Capacity depends on train type."}
-      conditions:
-        - {kind: secure_bike, description: "Some trains lack bicycle-space safety belts; straps may allow carriage at staff discretion."}
-        - {kind: capacity_discretion, description: "Train staff may refuse a bicycle when space is unavailable."}
-    evidence:
-      - {page: 5, locator: "Regioner > Bergslagen"}
-      - {page: 8, locator: "Cykel på regionala tåg > Bergslagen"}
-
-  - id: tag-i-bergslagen-regina
-    priority: 200
-    match:
-      modes: [rail]
-      agencies: [Tåg i Bergslagen]
-      vehicle_types: [Regina]
-    bicycle:
-      permission: conditional
-      bike_booking: unknown
-      ticket_purchase: advance_only
-      fare: {kind: free}
-      capacity: {kind: exact, min: 2, max: 2, per: train}
-      conditions:
-        - {kind: secure_bike, description: "Some trains lack bicycle-space safety belts; straps may allow carriage at staff discretion."}
-        - {kind: capacity_discretion, description: "Train staff may refuse a bicycle when space is unavailable."}
-    evidence:
-      - {page: 5, locator: "Regioner > Bergslagen"}
-      - {page: 8, locator: "Cykel på regionala tåg > Bergslagen"}
-
-  - id: tag-i-bergslagen-double-decker
-    priority: 200
-    match:
-      modes: [rail]
-      agencies: [Tåg i Bergslagen]
-      vehicle_types: [double-decker]
-    bicycle:
-      permission: conditional
-      bike_booking: unknown
-      ticket_purchase: advance_only
-      fare: {kind: free}
-      capacity: {kind: exact, min: 6, max: 6, per: train}
+      capacity: {kind: range, min: 0, max: 6, per: train, note: "Depends on train type and whether a usable bicycle space is available."}
       conditions:
         - {kind: secure_bike, description: "Some trains lack bicycle-space safety belts; straps may allow carriage at staff discretion."}
         - {kind: capacity_discretion, description: "Train staff may refuse a bicycle when space is unavailable."}
@@ -290,7 +184,6 @@ rules:
     match:
       modes: [rail]
       agencies: [Inlandsbanan]
-      services: [Inlandsbanan]
     bicycle:
       permission: conditional
       bike_booking: required
@@ -324,7 +217,7 @@ rules:
     match:
       modes: [rail]
       agencies: [Vy]
-      corridors: ["Göteborg–Ed–Halden–Oslo"]
+      agency_aliases: [Vy Norge, Vy Tåg]
     bicycle:
       permission: allowed
       bike_booking: unknown
@@ -339,7 +232,6 @@ rules:
     match:
       modes: [rail]
       agencies: [Mälartåg]
-      services: [Mälartåg]
     bicycle:
       permission: allowed
       bike_booking: unknown
@@ -387,7 +279,6 @@ rules:
     match:
       modes: [rail]
       agencies: [X-trafik]
-      services: [X-trafik]
     bicycle:
       permission: allowed
       bike_booking: unknown
@@ -402,7 +293,6 @@ rules:
     match:
       modes: [rail]
       agencies: [Norrtåg]
-      services: [Norrtåg]
     bicycle:
       permission: allowed
       bike_booking: unknown
@@ -411,3 +301,27 @@ rules:
       capacity: {kind: exact, min: 3, max: 3, per: train}
     evidence:
       - {page: 8, locator: "Cykel på regionala tåg > De fyra nordligaste länen"}
+
+advisories:
+  - id: tag-i-bergslagen-bicycle-space
+    match:
+      modes: [rail]
+      agencies: [Tåg i Bergslagen]
+    kind: operational
+    severity: warning
+    message: "Some trains have no bicycle space with a safety belt and normally cannot take a bicycle. Bring straps: staff may allow carriage if space permits."
+    evidence:
+      - {page: 5, locator: "Regioner > Bergslagen"}
+      - {page: 8, locator: "Cykel på regionala tåg > Bergslagen"}
+
+  - id: ostgotapendeln-vatternrundan
+    match:
+      modes: [rail]
+      agencies: [Östgötatrafiken]
+      services: [Östgötapendeln]
+    kind: event
+    severity: warning
+    recurrence: weekend_before_midsummer
+    message: "Bicycles are not allowed during the Vätternrundan cycling-race weekend."
+    evidence:
+      - {page: 5, locator: "Regioner > Östergötland > Östgötapendeln"}

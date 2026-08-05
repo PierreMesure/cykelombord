@@ -17,6 +17,7 @@ frontend/dist/
 
 # Generated and downloaded data
 data/source/*
+data/generated/gtfs/
 
 # Editors and operating systems
 .DS_Store

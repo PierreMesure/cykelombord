@@ -20,14 +20,23 @@ class _StrictModel(BaseModel):
 class Match(_StrictModel):
     modes: list[Literal["rail", "bus", "ferry"]]
     agencies: list[str] = Field(default_factory=list)
+    agency_aliases: list[str] = Field(default_factory=list)
     services: list[str] = Field(default_factory=list)
     corridors: list[str] = Field(default_factory=list)
     vehicle_types: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def needs_a_selector(self) -> Match:
-        if not (self.agencies or self.services or self.corridors or self.vehicle_types):
-            raise ValueError("match needs at least one agency, service, corridor, or vehicle type")
+        if not (
+            self.agencies
+            or self.agency_aliases
+            or self.services
+            or self.corridors
+            or self.vehicle_types
+        ):
+            raise ValueError(
+                "match needs at least one agency, alias, service, corridor, or vehicle type"
+            )
         return self
 
 
@@ -101,6 +110,18 @@ class Rule(_StrictModel):
     evidence: list[Evidence] = Field(min_length=1)
 
 
+class Advisory(_StrictModel):
+    """Source-backed information for the frontend that does not affect GTFS pruning."""
+
+    id: str = Field(pattern=r"^[a-z0-9][a-z0-9-]*$")
+    match: Match
+    kind: Literal["capacity", "event", "operational"]
+    severity: Literal["info", "warning"] = "info"
+    message: str
+    recurrence: Literal["weekend_before_midsummer"] | None = None
+    evidence: list[Evidence] = Field(min_length=1)
+
+
 class SourceDocument(_StrictModel):
     name: str
     edition: str
@@ -112,12 +133,13 @@ class Ruleset(_StrictModel):
     schema_version: Literal[1]
     source: SourceDocument
     rules: list[Rule] = Field(min_length=1)
+    advisories: list[Advisory] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def rule_ids_are_unique(self) -> Ruleset:
-        ids = [rule.id for rule in self.rules]
+        ids = [rule.id for rule in self.rules] + [advisory.id for advisory in self.advisories]
         if len(ids) != len(set(ids)):
-            raise ValueError("rule ids must be unique")
+            raise ValueError("rule and advisory ids must be unique")
         return self
 
 

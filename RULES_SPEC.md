@@ -7,8 +7,11 @@ The GTFS build will later validate it and compile it to JSON; do not hand-edit g
 
 Use the current `data/generated/guide.md` and the source PDF metadata. Follow these rules exactly:
 
-1. Create one rule for each distinct operator, service, corridor, vehicle type, or exception.
-2. Copy names as written in the source; never invent a GTFS ID or silently guess a company mapping.
+1. Keep capacity in the routing rule, including a range when it varies by train type. Put recurring
+   events and service-specific operational warnings (for example, some trains having no usable bike
+   space) in `advisories`.
+2. Copy source names into `agencies`. Use `agency_aliases` only for an exact, reviewed GTFS
+   `agency_name` spelling; never invent a GTFS ID or silently guess a company mapping.
 3. Encode only explicit facts. Use `unknown` where the guide does not say whether a bicycle booking,
    ticket purchase method, fare, or capacity applies.
 4. State an assembled-bicycle permission in every rule. `conditional` means it is permitted only
@@ -36,6 +39,7 @@ rules:
     match:
       modes: [rail]                 # rail, bus, or ferry
       agencies: [Operator name]
+      agency_aliases: [GTFS operator name] # optional, only when the source spelling differs
       services: [Service name]       # optional, guide spelling
       corridors: [Origin–destination] # optional, guide spelling
       vehicle_types: [electric]      # optional
@@ -59,10 +63,25 @@ rules:
     evidence:
       - page: 8
         locator: "Cykel på regionala tåg > Operator name"
+advisories:
+  - id: operator-capacity
+    match:
+      modes: [rail]
+      agencies: [Operator name]
+    kind: capacity                 # capacity, event, or operational
+    severity: info                 # info or warning
+    message: "Space is limited."
+    recurrence: null               # weekend_before_midsummer for Vätternrundan
+    evidence:
+      - page: 8
+        locator: "Cykel på regionala tåg > Operator name"
 ```
 
 Allowed condition kinds are `bike_type`, `capacity_discretion`, `event_dates`,
 `route_exclusion`, `season`, `secure_bike`, and `time_window`.
+
+Advisories never affect GTFS pruning. The frontend can display them after the corresponding
+service is matched; it is responsible for evaluating a declared recurrence.
 
 ## Validation
 

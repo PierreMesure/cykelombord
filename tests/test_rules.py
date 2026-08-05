@@ -11,17 +11,32 @@ def test_checked_in_ruleset_is_valid() -> None:
     ruleset = load_ruleset(RULESET_PATH)
 
     assert ruleset.schema_version == 1
-    assert len(ruleset.rules) == 24
+    assert len(ruleset.rules) == 18
+    assert len(ruleset.advisories) == 2
     assert ruleset.source.edition == "2026-06"
 
 
 def test_checked_in_ruleset_contains_a_narrower_exception() -> None:
     ruleset = load_ruleset(RULESET_PATH)
     rules = {rule.id: rule for rule in ruleset.rules}
+    advisories = {advisory.id: advisory for advisory in ruleset.advisories}
 
     assert rules["ostgotapendeln"].bicycle.permission == "allowed"
-    assert rules["ostgotapendeln-vatternrundan"].bicycle.permission == "not_allowed"
-    assert rules["ostgotapendeln-vatternrundan"].priority > rules["ostgotapendeln"].priority
+    assert advisories["ostgotapendeln-vatternrundan"].kind == "event"
+    assert advisories["ostgotapendeln-vatternrundan"].recurrence == "weekend_before_midsummer"
+
+
+def test_variable_capacity_stays_with_the_matching_rule() -> None:
+    ruleset = load_ruleset(RULESET_PATH)
+    rules = {rule.id: rule for rule in ruleset.rules}
+    advisories = {advisory.id: advisory for advisory in ruleset.advisories}
+
+    assert rules["krosatagen-general"].bicycle.capacity.kind == "range"
+    assert rules["krosatagen-general"].bicycle.capacity.min == 2
+    assert rules["krosatagen-general"].bicycle.capacity.max == 6
+    assert rules["tag-i-bergslagen"].bicycle.capacity.min == 0
+    assert rules["tag-i-bergslagen"].bicycle.capacity.max == 6
+    assert advisories["tag-i-bergslagen-bicycle-space"].kind == "operational"
 
 
 def test_rejects_an_inconsistent_fixed_fare(tmp_path: Path) -> None:

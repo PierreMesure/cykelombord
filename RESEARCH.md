@@ -26,9 +26,12 @@ metadata. It should be converted to Markdown and then into reviewed structured r
 text remains important as evidence: generated rules must retain their source section, source URL,
 retrieval date, and a human-readable explanation.
 
-The rules are an overlay, not timetable data. They need selectors for operator, transport mode,
-route or corridor, stops, direction, calendar period, and exceptional trips. Outcomes should
-distinguish at least:
+The rules are an overlay, not timetable data. Routing rules need selectors for operator, transport
+mode, route or corridor, stops, direction, calendar period, and exceptional trips. Capacity belongs
+on the matching rule, including a range when it varies by rolling stock. Separate display advisories
+hold recurring events and service-specific operational warnings, such as a train with no usable bike
+space.
+Outcomes should distinguish at least:
 
 - assembled bicycle allowed;
 - allowed with a fee;
@@ -118,6 +121,13 @@ Limitations:
 - no realtime data;
 - bicycle fields cannot be trusted as complete;
 - all downstream files must retain valid GTFS references when pruned.
+
+The first live pruning run also showed why a reviewed resolution layer is necessary: GTFS Sverige 2
+uses extended `route_type` values such as `101`, `102`, and `106` for rail, often stores a train
+number in `route_short_name`, and leaves `route_long_name` empty. Some guide/operator spellings also
+differ, for example `Värmlandstrafiken` versus the feed's `Värmlandstrafik`. Exact reviewed aliases
+can handle the latter, but train model, service brand, and route-corridor distinctions must remain
+unresolved until a deterministic mapping is available.
 
 Conclusion: selected for the first implementation because completeness matters more than maximum
 detail for this use case.

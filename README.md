@@ -4,9 +4,9 @@ Cykel på tåg aims to plan Swedish public-transport journeys on which a trave
 assembled bicycle. It will combine Trafiklab timetable data with structured rules derived from
 Naturskyddsföreningen's regularly updated guide.
 
-The guide downloader, PDF-to-Markdown conversion, and a first source-extracted YAML ruleset are
-implemented.
-GTFS downloading, pruning, validation, routing, and the planner interface are not yet implemented.
+The guide downloader, PDF-to-Markdown conversion, first source-extracted YAML ruleset, and a
+conservative first GTFS 2 pruner are implemented. Full GTFS validation, GTFS selector review,
+routing, and the planner interface are not yet implemented.
 
 ## Repository layout
 
@@ -38,7 +38,12 @@ uv sync --all-groups
 npm --prefix frontend install
 ```
 
-Set `TRAFIKLAB_API_KEY` in `.env`. The local `.env` is ignored by Git.
+Set credentials in `.env` only for the APIs you use. The local `.env` is ignored by Git:
+
+```dotenv
+TRAFIKLAB_RESROBOT_RESEPLANERARE_API_KEY=...
+TRAFIKLAB_GTFS_API_KEY=...
+```
 
 Run the current skeleton checks with:
 
@@ -86,12 +91,43 @@ initial policy extraction. It contains only facts explicitly stated by the June 
 each rule back to a page and heading. The build will later resolve these human-facing names against a
 specific GTFS feed and compile the validated result to JSON for the web app.
 
+Eligibility rules affect pruning and carry their stated capacity or capacity range. Separate
+structured advisories preserve recurring events and service-specific operational warnings for display
+after routing; for example, the Vätternrundan warning has a `weekend_before_midsummer` recurrence for
+the frontend to evaluate.
+
 The schema and repeatable extraction instructions are in [`RULES_SPEC.md`](RULES_SPEC.md). Validate
 the checked-in ruleset with:
 
 ```bash
 uv run cykelpatag rules validate
 ```
+
+## Build the first bike-compatible GTFS subset
+
+The first pruner only keeps trips matched by explicit, resolved rules; it does not treat absent GTFS
+`bikes_allowed` metadata as a prohibition. It writes a pruned archive, a source/feed manifest, and a
+rule-resolution report. Unresolved policies are reported rather than guessed. The all-date subset is
+affected only by eligibility rules; date-specific information such as Vätternrundan is retained as a
+frontend advisory rather than incorrectly removing a service from every date.
+
+```bash
+uv run cykelpatag gtfs build
+```
+
+This requires `TRAFIKLAB_GTFS_API_KEY`, enabled specifically for **GTFS Sverige 2**. The separate
+`TRAFIKLAB_RESROBOT_RESEPLANERARE_API_KEY` is reserved for future ResRobot route-planner comparison
+or fallback requests. Outputs are written to `data/generated/gtfs/` and are ignored by Git.
+
+To re-run the pruner against an already downloaded archive without consuming an API request:
+
+```bash
+uv run cykelpatag gtfs build --source-archive data/source/gtfs-sweden-2.zip
+```
+
+This is an intentionally conservative prototype, not a publishable feed yet: the accompanying
+`rules-resolved.json` must have its unresolved selectors mapped and reviewed before the result is
+used for journey planning.
 
 ## Data and attribution
 

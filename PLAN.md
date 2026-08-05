@@ -28,7 +28,7 @@ Status: complete.
 
 - Create a Python 3.12 project managed with uv.
 - Create a Vite and TypeScript npm project under `frontend/`.
-- Add local and example environment files containing `TRAFIKLAB_API_KEY` configuration.
+- Add local and example environment files containing separate ResRobot and GTFS credentials.
 - Add baseline Python and frontend CI checks.
 - Add source and generated-data directories without committing downloaded material.
 - Document the research and implementation sequence.
@@ -63,8 +63,9 @@ Stop for a manual Markdown review before extracting rules.
 Status: initial schema and June 2026 source extraction implemented; GTFS resolution and review
 reporting remain to be implemented.
 
-1. Define a versioned Pydantic schema for operators, modes, routes, stop corridors, direction,
-   dates, fees, reservations, capacity, packing, exceptions, and evidence.
+1. Define a versioned Pydantic schema for routing eligibility plus display-only advisories covering
+   operators, modes, routes, stop corridors, dates, fees, reservations, capacity, packing,
+   exceptions, and evidence.
 2. Extract the guide Markdown into draft rules while retaining source pages and headings.
 3. Generate a review report for ambiguous statements and rules without stable selectors.
 4. Add a manually maintained override file for corrections that cannot be derived safely.
@@ -80,9 +81,11 @@ data/generated/rule-review.md
 
 ## Milestone 3 — Download and prune GTFS Sverige 2
 
-Status: not started.
+Status: first conservative downloader, rule resolver, and referential-closure pruner implemented
+and exercised against the current live feed. It still needs an approved mapping review workflow and
+an external GTFS validator before publication.
 
-1. Add a downloader that reads `TRAFIKLAB_API_KEY` from the environment and never logs it.
+1. Add a downloader that reads `TRAFIKLAB_GTFS_API_KEY` from the environment and never logs it.
 2. Use `HEAD`, ETag, Last-Modified, feed version, or checksum information to avoid unchanged builds.
 3. Download GTFS Sverige 2 into temporary storage.
 4. Load relevant tables with DuckDB.
@@ -108,7 +111,9 @@ Status: not started.
 6. Retain manifests and validation reports for diagnosis and reproducibility.
 7. Upload versioned build artifacts or publish them to static hosting.
 
-Secrets will be supplied through GitHub Actions secrets as `TRAFIKLAB_API_KEY`; `.env` remains local.
+Secrets will be supplied through GitHub Actions secrets as `TRAFIKLAB_GTFS_API_KEY`; `.env` remains
+local. A future ResRobot integration uses the separate
+`TRAFIKLAB_RESROBOT_RESEPLANERARE_API_KEY`.
 
 ## Milestone 5 — Test browser-based RAPTOR in real conditions
 
@@ -150,8 +155,8 @@ Status: not started.
 2. Plan journeys entirely from the bicycle-compatible routing artifact.
 3. Present several useful alternatives with transfers, duration, operating companies, and bicycle
    compatibility clearly visible.
-4. Explain every matched policy condition: fees, booking, capacity, packing, seasonal rules, and
-   uncertainty.
+4. Explain every matched eligibility rule and advisory: fees, booking, capacity, packing, seasonal
+   rules, and uncertainty.
 5. Link explanations to their guide/operator source and show the timetable/rule freshness date.
 6. Handle no-route and unknown-policy cases honestly rather than silently widening eligibility.
 7. Make the application installable and cache routing data for repeat/offline use where feasible.
