@@ -497,6 +497,34 @@ def _write_deterministic_zip(source_dir: Path, archive_path: Path) -> None:
     temporary_path.replace(archive_path)
 
 
+def _write_route_metadata(feed_dir: Path, output_path: Path) -> None:
+    """Export agency and service labels keyed by Minotor's route-short-name field."""
+    agencies = {
+        row["agency_id"]: row["agency_name"]
+        for row in _read_csv(feed_dir / "agency.txt")
+    }
+    by_short_name: dict[str, set[tuple[str, str]]] = defaultdict(set)
+    for row in _read_csv(feed_dir / "routes.txt"):
+        short_name = row.get("route_short_name", "").strip()
+        if not short_name:
+            continue
+        agency = agencies.get(row.get("agency_id", ""), "Unknown operator")
+        service = row.get("route_long_name", "").strip()
+        by_short_name[short_name].add((agency, service))
+    _atomic_write_json(
+        output_path,
+        {
+            "by_short_name": {
+                short_name: [
+                    {"agency": agency, "service": service}
+                    for agency, service in sorted(candidates)
+                ]
+                for short_name, candidates in sorted(by_short_name.items())
+            }
+        },
+    )
+
+
 def build_gtfs(
     *,
     rules_path: Path = Path("rules/bike-rules.yaml"),
@@ -543,6 +571,7 @@ def build_gtfs(
         )
         archive_path = output_dir / "bike.gtfs.zip"
         _write_deterministic_zip(feed_dir, archive_path)
+        _write_route_metadata(feed_dir, output_dir / "route-metadata.json")
 
     resolved = [item for item in resolutions if item["status"] == "resolved"]
     unresolved = [item for item in resolutions if item["status"] != "resolved"]

@@ -48,6 +48,8 @@ rules:
     match:
       modes: [rail]
       agencies: [Krösatågen]
+      # GTFS also assigns explicitly branded Krösatåg routes to these agencies.
+      agency_aliases: [Jönköpings Länstrafik, Krösatåg]
       services: [Krösatåg]
     bicycle:
       permission: allowed
@@ -64,6 +66,7 @@ rules:
     match:
       modes: [rail]
       agencies: [Krösatågen]
+      agency_aliases: [Jönköpings Länstrafik, Krösatåg]
       corridors: ["Linköping–Västervik", "Linköping–Vimmerby", "Linköping–Kalmar"]
     bicycle:
       permission: not_allowed

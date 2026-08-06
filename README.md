@@ -4,9 +4,9 @@ Cykel på tåg aims to plan Swedish public-transport journeys on which a trave
 assembled bicycle. It will combine Trafiklab timetable data with structured rules derived from
 Naturskyddsföreningen's regularly updated guide.
 
-The guide downloader, PDF-to-Markdown conversion, first source-extracted YAML ruleset, and a
-conservative first GTFS 2 pruner are implemented. Full GTFS validation, GTFS selector review,
-routing, and the planner interface are not yet implemented.
+The guide downloader, PDF-to-Markdown conversion, first source-extracted YAML ruleset, GTFS 2
+pruner, and a small browser-only routing prototype are implemented. The prototype is for
+validation and exploration, not publication yet.
 
 ## Repository layout
 
@@ -54,11 +54,19 @@ uv run pytest
 npm --prefix frontend run build
 ```
 
-Start the placeholder frontend with:
+Create a rolling set of browser timetables from a generated bike subset, copy the artifacts to the
+frontend's local public directory, then start the prototype:
 
 ```bash
+cykelpatag router build --days 90
+npm --prefix frontend run prepare-router-data
 npm --prefix frontend run dev
 ```
+
+This produces one date-specific timetable per day (currently about 341 KB each), a reusable stops
+index, and `router-manifest.json`. The frontend reads that manifest before enabling the date picker,
+so it cannot request unpublished dates. Autocomplete and RAPTOR routing run in a web worker; no user
+query is sent to a server.
 
 ## Update the bicycle guide
 
@@ -128,6 +136,32 @@ uv run cykelpatag gtfs build --source-archive data/source/gtfs-sweden-2.zip
 This is an intentionally conservative prototype, not a publishable feed yet: the accompanying
 `rules-resolved.json` must have its unresolved selectors mapped and reviewed before the result is
 used for journey planning.
+
+## Operational commands
+
+Every pipeline stage has a CLI command. The GTFS validator is the `gtfs-guru` Python dependency; it
+writes JSON and HTML reports and exits unsuccessfully only for validation errors, not upstream
+warnings.
+
+```bash
+# Download and convert the current source guide (requires uv sync --extra guide)
+cykelpatag guide update
+
+# Download GTFS Sverige 2, prune it, and write rules-resolved.json
+cykelpatag gtfs build
+
+# Validate the pruned archive
+cykelpatag gtfs validate
+
+# Compile a rolling range of daily browser artifacts and router-manifest.json
+cykelpatag router build --days 90
+
+# Daily CI/CD command: download, prune, validate, then compile 90 days
+cykelpatag pipeline update --days 90
+```
+
+`pipeline update` deliberately stops before router generation if pruning produces an invalid GTFS.
+Pass `--start-date YYYY-MM-DD` to `router build` or `pipeline update` for a reproducible range.
 
 ## Data and attribution
 

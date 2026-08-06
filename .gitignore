@@ -18,6 +18,9 @@ frontend/dist/
 # Generated and downloaded data
 data/source/*
 data/generated/gtfs/
+data/generated/router/
+frontend/public/router/*
+!frontend/public/router/.gitkeep
 
 # Editors and operating systems
 .DS_Store
