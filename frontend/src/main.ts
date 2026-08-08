@@ -1,4 +1,10 @@
 import "./style.css";
+import "iconify-icon";
+import trainIcon from "@iconify/icons-material-symbols/train";
+import { addIcon } from "iconify-icon";
+
+// Keep the single glyph local so the planner remains functional offline.
+addIcon("material-symbols:train", trainIcon);
 
 type Stop = { id: number; name: string; platform?: string };
 
@@ -9,7 +15,7 @@ type VehicleLeg = {
   departureTime: number;
   arrivalTime: number;
   route: { name: string; type: string };
-  metadata: Array<{ agency: string; service: string }>;
+  metadata: Array<{ agency: string; service: string; agency_id: string }>;
 };
 
 type TransferLeg = {
@@ -112,6 +118,40 @@ function formatTime(minutes: number): string {
   return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
 }
 
+function formatDuration(minutes: number): string {
+  const rounded = Math.max(0, Math.round(minutes));
+  if (rounded < 60) return `${rounded} min`;
+  const hours = Math.floor(rounded / 60);
+  const remaining = rounded % 60;
+  return remaining ? `${hours} h ${remaining} min` : `${hours} h`;
+}
+
+const agencyColors = ["#286b59", "#b85c38", "#5367a6", "#9b4f76", "#7c6a32"];
+
+function agencyInfo(leg: VehicleLeg): { agency: string; service: string; initials: string; color: string; agencyIds: string[] } {
+  const agencies = [...new Set(leg.metadata.map((item) => item.agency).filter(Boolean))];
+  const services = [...new Set(leg.metadata.map((item) => item.service).filter(Boolean))];
+  const agencyIds = [...new Set(leg.metadata.map((item) => item.agency_id).filter(Boolean))];
+  const agency = agencies.length ? agencies.join(" / ") : "Operatör saknas";
+  const service = services.length === 1 ? services[0]! : "";
+  const initials = agency
+    .split(/\s+/)
+    .filter((word) => word.length > 2)
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase() || "TÅG";
+  const colorIndex = [...agency].reduce((hash, character) => hash + character.charCodeAt(0), 0);
+  return { agency, service, initials, color: agencyColors[colorIndex % agencyColors.length]!, agencyIds };
+}
+
+function operatorBadge(info: ReturnType<typeof agencyInfo>): string {
+  const agencyId = info.agencyIds[0];
+  const fallback = `<span class="operator-fallback"><span class="operator-initials">${info.initials}</span><span>${info.agency}</span></span>`;
+  if (!agencyId) return fallback;
+  return `<span class="operator-badge"><img class="operator-logo" src="https://reseplanerare.resrobot.se/img/light/operators/${agencyId}.png" alt="${info.agency}" loading="lazy"><span class="operator-fallback" hidden><span class="operator-initials">${info.initials}</span><span>${info.agency}</span></span></span>`;
+}
+
 function updateSearchState(): void {
   searchButton.disabled = !ready || !fromStop || !toStop;
 }
@@ -185,34 +225,47 @@ function renderRoute(route: Route | undefined): void {
   const last = vehicles.at(-1);
   if (!first || !last) return;
 
+  const changes = Math.max(0, vehicles.length - 1);
+  const pathSegments: string[] = [];
+  const details: string[] = [];
+
+  details.push(`<li class="detail-station detail-station-start"><div class="station-times"><time>${formatTime(first.departureTime)}</time></div><span class="station-dot" aria-hidden="true"></span><span class="station-name">${first.from.name}</span></li>`);
+
+  for (const [index, leg] of vehicles.entries()) {
+    const info = agencyInfo(leg);
+    const legDuration = leg.arrivalTime - leg.departureTime;
+    if (index > 0) {
+      const previous = vehicles[index - 1]!;
+      const waiting = Math.max(0, leg.departureTime - previous.arrivalTime);
+      pathSegments.push(`<span class="path-dent" aria-label="Byte"></span>`);
+      details.push(`<li class="detail-station detail-station-connection"><div class="station-times"><time>${formatTime(previous.arrivalTime)}</time><time>${formatTime(leg.departureTime)}</time></div><span class="station-dot" aria-hidden="true"></span><span class="station-name">${leg.from.name}</span><small class="station-wait">${formatDuration(waiting)}</small></li>`);
+    }
+    pathSegments.push(`<span class="path-segment" style="--segment-color: ${info.color}" title="${info.agency}"><iconify-icon icon="material-symbols:train" class="path-train" aria-hidden="true"></iconify-icon></span>`);
+    details.push(`<li class="detail-service" style="--segment-color: ${info.color}"><span class="detail-marker" aria-hidden="true"><iconify-icon icon="material-symbols:train" class="train-icon"></iconify-icon></span><div class="detail-title"><span class="line-badge">${leg.route.name}</span><strong>${operatorBadge(info)}${info.service || ""}</strong><small>${formatDuration(legDuration)}</small></div></li>`);
+  }
+
+  details.push(`<li class="detail-station detail-station-end"><div class="station-times"><time>${formatTime(last.arrivalTime)}</time></div><span class="station-dot" aria-hidden="true"></span><span class="station-name">${last.to.name}</span></li>`);
+
   results.innerHTML = `
     <article class="journey">
       <div class="journey-summary">
         <div><strong>${formatTime(first.departureTime)}</strong><span>${first.from.name}</span></div>
-        <div class="duration">${Math.max(0, last.arrivalTime - first.departureTime)} min<br><span>${Math.max(0, vehicles.length - 1)} byten</span></div>
+        <div class="duration"><strong>${formatDuration(last.arrivalTime - first.departureTime)}</strong><span>${changes} ${changes === 1 ? "byte" : "byten"}</span></div>
         <div><strong>${formatTime(last.arrivalTime)}</strong><span>${last.to.name}</span></div>
       </div>
-      <ol class="legs">
-        ${route.legs
-          .map((leg) => {
-            if (leg.kind === "transfer") {
-              return `<li class="transfer">Byte${leg.duration ? ` · minst ${leg.duration} min` : ""}</li>`;
-            }
-            const agencies = [...new Set(leg.metadata.map((item) => item.agency))];
-            const services = [...new Set(leg.metadata.map((item) => item.service).filter(Boolean))];
-            const operator = agencies.length ? agencies.join(" / ") : "Operatör saknas";
-            const service = services.length === 1 ? ` · ${services[0]}` : "";
-            return `<li>
-              <time>${formatTime(leg.departureTime)}–${formatTime(leg.arrivalTime)}</time>
-              <div><strong>${operator}${service}</strong><span>Linje ${leg.route.name} · ${leg.from.name} → ${leg.to.name}</span></div>
-              <span class="mode">${leg.route.type}</span>
-            </li>`;
-          })
-          .join("")}
-      </ol>
-      <p class="bike-note">Cykeln är tillåten enligt det prunade regelverket. Kapacitet, eventuell bokning och avgift visas i nästa steg.</p>
+      <div class="journey-path" aria-label="Resans byten"><span class="path-node" aria-hidden="true"></span><span class="path-route">${pathSegments.join("")}</span><span class="path-node" aria-hidden="true"></span></div>
+      <div class="path-labels"><span>${first.from.name}</span><span>${last.to.name}</span></div>
+      <details class="journey-details">
+        <summary><span>Visa resans detaljer</span><span class="summary-arrow" aria-hidden="true">⌄</span></summary>
+        <ol class="detail-legs">${details.join("")}</ol>
+      </details>
     </article>
   `;
+  results.querySelectorAll<HTMLImageElement>(".operator-logo").forEach((image) => {
+    const fallback = image.nextElementSibling as HTMLElement | null;
+    image.addEventListener("load", () => { if (fallback) fallback.hidden = true; });
+    image.addEventListener("error", () => { image.hidden = true; if (fallback) fallback.hidden = false; });
+  });
 }
 
 for (const [field, controls] of Object.entries(fields) as Array<

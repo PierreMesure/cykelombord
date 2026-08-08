@@ -7,7 +7,7 @@ type Request =
 
 let stopsIndex: StopsIndex | undefined;
 let router: Router | undefined;
-let routeMetadata: Record<string, Array<{ agency: string; service: string }>> = {};
+let routeMetadata: Record<string, Array<{ agency: string; service: string; agency_id: string }>> = {};
 
 function toStop(stop: { id: number; name: string; platform?: string }) {
   return { id: stop.id, name: stop.name, platform: stop.platform };
@@ -28,7 +28,7 @@ async function initialise(date: string): Promise<void> {
     }
     stopsIndex = StopsIndex.fromData(new Uint8Array(await stopsResponse.arrayBuffer()));
     const metadata = (await metadataResponse.json()) as {
-      by_short_name?: Record<string, Array<{ agency: string; service: string }>>;
+      by_short_name?: Record<string, Array<{ agency: string; service: string; agency_id: string }>>;
     };
     routeMetadata = metadata.by_short_name ?? {};
   }

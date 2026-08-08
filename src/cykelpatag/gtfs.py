@@ -503,21 +503,21 @@ def _write_route_metadata(feed_dir: Path, output_path: Path) -> None:
         row["agency_id"]: row["agency_name"]
         for row in _read_csv(feed_dir / "agency.txt")
     }
-    by_short_name: dict[str, set[tuple[str, str]]] = defaultdict(set)
+    by_short_name: dict[str, set[tuple[str, str, str]]] = defaultdict(set)
     for row in _read_csv(feed_dir / "routes.txt"):
         short_name = row.get("route_short_name", "").strip()
         if not short_name:
             continue
         agency = agencies.get(row.get("agency_id", ""), "Unknown operator")
         service = row.get("route_long_name", "").strip()
-        by_short_name[short_name].add((agency, service))
+        by_short_name[short_name].add((agency, service, row.get("agency_id", "")))
     _atomic_write_json(
         output_path,
         {
             "by_short_name": {
                 short_name: [
-                    {"agency": agency, "service": service}
-                    for agency, service in sorted(candidates)
+                    {"agency": agency, "service": service, "agency_id": agency_id}
+                    for agency, service, agency_id in sorted(candidates)
                 ]
                 for short_name, candidates in sorted(by_short_name.items())
             }
