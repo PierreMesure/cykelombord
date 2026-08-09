@@ -139,9 +139,15 @@ used for journey planning.
 
 ## Operational commands
 
-Every pipeline stage has a CLI command. The GTFS validator is the `gtfs-guru` Python dependency; it
-writes JSON and HTML reports and exits unsuccessfully only for validation errors, not upstream
-warnings.
+Every pipeline stage has a CLI command. GTFS validation is optional locally because `gtfs-guru`
+ships a native extension; install it when running validation or the complete pipeline:
+
+```bash
+uv sync --extra gtfs-validation
+```
+
+The validator writes JSON and HTML reports and exits unsuccessfully only for validation errors, not
+upstream warnings.
 
 ```bash
 # Download and convert the current source guide (requires uv sync --extra guide)

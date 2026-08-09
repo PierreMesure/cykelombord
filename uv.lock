@@ -61,7 +61,6 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "duckdb" },
-    { name = "gtfs-guru" },
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
@@ -70,6 +69,9 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+gtfs-validation = [
+    { name = "gtfs-guru" },
+]
 guide = [
     { name = "pymupdf4llm" },
 ]
@@ -85,7 +87,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "duckdb", specifier = ">=1.4,<2" },
-    { name = "gtfs-guru", specifier = "==0.9.3" },
+    { name = "gtfs-guru", marker = "extra == 'gtfs-validation'", specifier = "==0.9.3" },
     { name = "httpx", specifier = ">=0.28,<1" },
     { name = "pydantic", specifier = ">=2.11,<3" },
     { name = "pydantic-settings", specifier = ">=2.10,<3" },
@@ -93,7 +95,7 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6.0,<7" },
     { name = "typer", specifier = ">=0.16,<1" },
 ]
-provides-extras = ["guide"]
+provides-extras = ["gtfs-validation", "guide"]
 
 [package.metadata.requires-dev]
 dev = [

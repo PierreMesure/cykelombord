@@ -30,10 +30,10 @@ jobs:
           python-version-file: .python-version
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - run: uv sync --locked
+      - run: uv sync --locked --extra gtfs-validation
       - run: npm --prefix frontend ci
       - name: Check Trafiklab feed version
         id: feed

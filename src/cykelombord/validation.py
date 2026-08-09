@@ -32,7 +32,8 @@ def validate_gtfs(
         import gtfs_guru  # type: ignore[import-not-found]
     except ImportError as error:
         raise GtfsValidationError(
-            "gtfs-guru is unavailable; run 'uv sync' on a supported platform."
+            "gtfs-guru is unavailable; run 'uv sync --extra gtfs-validation' on a supported "
+            "platform."
         ) from error
     output_dir.mkdir(parents=True, exist_ok=True)
     report: Any = gtfs_guru.validate(str(archive_path))
