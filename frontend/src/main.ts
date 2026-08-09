@@ -34,9 +34,12 @@ let availableDates = new Set<string>();
 app.innerHTML = `
   <main>
     <header>
-      <p class="eyebrow"><span class="beta-badge">BETA</span></p>
-      <h1>Cykel ombord</h1>
-      <p class="intro">Hitta tågresor som tillåter cyklar</p>
+      <div class="brand-row">
+        <img class="brand-logo" src="/logo.webp" alt="" width="480" height="407">
+        <h1>Cykel ombord</h1>
+        <span class="beta-badge">BETA</span>
+      </div>
+      <p class="intro">Hitta kollektivtrafik som tillåter cyklar</p>
     </header>
 
     <section class="planner" aria-label="Resesökning">
@@ -44,13 +47,13 @@ app.innerHTML = `
         <div class="fields">
           <label class="field">
             <span>Från</span>
-            <input id="from" name="from" autocomplete="off" placeholder="t.ex. Stockholm Central" disabled>
-            <div id="from-suggestions" class="suggestions" hidden></div>
+            <input id="from" name="from" role="combobox" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" aria-autocomplete="list" aria-controls="from-suggestions" aria-expanded="false" placeholder="t.ex. Stockholm C" disabled>
+            <div id="from-suggestions" class="suggestions" role="listbox" hidden></div>
           </label>
           <label class="field">
             <span>Till</span>
-            <input id="to" name="to" autocomplete="off" placeholder="t.ex. Uppsala Central" disabled>
-            <div id="to-suggestions" class="suggestions" hidden></div>
+            <input id="to" name="to" role="combobox" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" aria-autocomplete="list" aria-controls="to-suggestions" aria-expanded="false" placeholder="t.ex. Uppsala C" disabled>
+            <div id="to-suggestions" class="suggestions" role="listbox" hidden></div>
           </label>
           <label class="field date-field">
             <span>Resdatum</span>
@@ -68,7 +71,7 @@ app.innerHTML = `
     </section>
 
     <footer>
-      <p>Denna webbsida togs fram av <a href="https://mesu.re" rel="author">Pierre Mesure</a> och publiceras som <a href="https://github.com/PierreMesure/cykelombord">öppen källkod</a> ❤️ (AGPLv3).</p>
+      <p>Denna webbsida togs fram av <a href="https://pierre.mesu.re" target="_blank" rel="author">Pierre Mesure</a> och publiceras som <a href="https://github.com/PierreMesure/cykelombord" target="_blank">öppen källkod</a> ❤️ (AGPLv3).</p>
     </footer>
   </main>
 `;
@@ -87,6 +90,11 @@ const fields = {
     input: document.querySelector<HTMLInputElement>("#to")!,
     suggestions: document.querySelector<HTMLElement>("#to-suggestions")!,
   },
+};
+type FieldName = keyof typeof fields;
+const suggestionState: Record<FieldName, { stops: Stop[]; activeIndex: number }> = {
+  from: { stops: [], activeIndex: -1 },
+  to: { stops: [], activeIndex: -1 },
 };
 
 function updateSearchState(): void {
@@ -125,21 +133,60 @@ async function loadManifest(): Promise<void> {
   }
 }
 
-function selectStop(field: "from" | "to", stop: Stop): void {
+function hideSuggestions(field: FieldName): void {
+  const controls = fields[field];
+  const state = suggestionState[field];
+  controls.suggestions.hidden = true;
+  controls.input.setAttribute("aria-expanded", "false");
+  controls.input.removeAttribute("aria-activedescendant");
+  state.activeIndex = -1;
+  controls.suggestions.querySelectorAll("[role='option']").forEach((option) => {
+    option.setAttribute("aria-selected", "false");
+  });
+}
+
+function selectStop(field: FieldName, stop: Stop): void {
   fields[field].input.value = stop.name;
-  fields[field].suggestions.hidden = true;
+  hideSuggestions(field);
   if (field === "from") fromStop = stop;
   else toStop = stop;
   updateSearchState();
 }
 
-function showSuggestions(field: "from" | "to", stops: Stop[]): void {
-  const container = fields[field].suggestions;
+function setActiveSuggestion(field: FieldName, index: number): void {
+  const controls = fields[field];
+  const state = suggestionState[field];
+  if (!state.stops.length) return;
+  state.activeIndex = (index + state.stops.length) % state.stops.length;
+  const options = [...controls.suggestions.querySelectorAll<HTMLElement>("[role='option']")];
+  options.forEach((option, optionIndex) => {
+    option.setAttribute("aria-selected", String(optionIndex === state.activeIndex));
+  });
+  const activeOption = options[state.activeIndex];
+  if (activeOption) {
+    controls.input.setAttribute("aria-activedescendant", activeOption.id);
+    activeOption.scrollIntoView({ block: "nearest" });
+  }
+}
+
+function focusNextField(field: FieldName): void {
+  if (field === "from") fields.to.input.focus();
+  else dateInput.focus();
+}
+
+function showSuggestions(field: FieldName, stops: Stop[]): void {
+  const controls = fields[field];
+  const container = controls.suggestions;
+  suggestionState[field] = { stops, activeIndex: -1 };
   container.replaceChildren();
-  for (const stop of stops) {
+  for (const [index, stop] of stops.entries()) {
     const button = document.createElement("button");
     button.type = "button";
+    button.id = `${field}-suggestion-${index}`;
+    button.setAttribute("role", "option");
+    button.setAttribute("aria-selected", "false");
     button.textContent = stop.platform ? `${stop.name}, läge ${stop.platform}` : stop.name;
+    button.addEventListener("mouseenter", () => setActiveSuggestion(field, index));
     button.addEventListener("mousedown", (event) => {
       event.preventDefault();
       selectStop(field, stop);
@@ -147,10 +194,12 @@ function showSuggestions(field: "from" | "to", stops: Stop[]): void {
     container.append(button);
   }
   container.hidden = stops.length === 0;
+  controls.input.setAttribute("aria-expanded", String(stops.length > 0));
+  if (!stops.length) controls.input.removeAttribute("aria-activedescendant");
 }
 
 for (const [field, controls] of Object.entries(fields) as Array<
-  ["from" | "to", (typeof fields)["from"]]
+  [FieldName, (typeof fields)["from"]]
 >) {
   controls.input.addEventListener("input", () => {
     if (field === "from") fromStop = undefined;
@@ -158,13 +207,35 @@ for (const [field, controls] of Object.entries(fields) as Array<
     updateSearchState();
     const query = controls.input.value.trim();
     if (query.length < 2) {
-      controls.suggestions.hidden = true;
+      suggestionState[field].stops = [];
+      hideSuggestions(field);
       return;
     }
     worker.postMessage({ type: "suggest", field, query });
   });
+  controls.input.addEventListener("keydown", (event) => {
+    const state = suggestionState[field];
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      if (!state.stops.length) return;
+      event.preventDefault();
+      controls.suggestions.hidden = false;
+      controls.input.setAttribute("aria-expanded", "true");
+      const direction = event.key === "ArrowDown" ? 1 : -1;
+      setActiveSuggestion(field, state.activeIndex + direction);
+    } else if (event.key === "Enter" && state.activeIndex >= 0 && !controls.suggestions.hidden) {
+      event.preventDefault();
+      const stop = state.stops[state.activeIndex];
+      if (stop) {
+        selectStop(field, stop);
+        focusNextField(field);
+      }
+    } else if (event.key === "Escape" && !controls.suggestions.hidden) {
+      event.preventDefault();
+      hideSuggestions(field);
+    }
+  });
   controls.input.addEventListener("blur", () => {
-    window.setTimeout(() => (controls.suggestions.hidden = true), 150);
+    window.setTimeout(() => hideSuggestions(field), 150);
   });
 }
 

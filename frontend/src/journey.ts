@@ -27,7 +27,7 @@ type AgencyInfo = {
   agencyIds: string[];
 };
 
-const agencyColors = ["#286b59", "#b85c38", "#5367a6", "#9b4f76", "#7c6a32"];
+const agencyColors = ["#0878c9", "#b85c38", "#5367a6", "#9b4f76", "#7c6a32"];
 
 function element<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -266,14 +266,14 @@ function renderJourneyDetails(vehicles: VehicleLeg[]): HTMLDetailsElement {
 
 export function renderJourney(route: Route | undefined): HTMLElement {
   if (!route) {
-    return element("p", "empty", "Ingen cykelvänlig resa hittades i den här tidtabellen.");
+    return element("p", "empty empty-result", "Inga cykelvänliga resor hittades");
   }
 
   const vehicles = route.legs.filter((leg): leg is VehicleLeg => leg.kind === "vehicle");
   const first = vehicles[0];
   const last = vehicles.at(-1);
   if (!first || !last) {
-    return element("p", "empty", "Ingen cykelvänlig resa hittades i den här tidtabellen.");
+    return element("p", "empty empty-result", "Inga cykelvänliga resor hittades");
   }
 
   const journey = element("article", "journey");
