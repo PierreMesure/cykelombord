@@ -24,7 +24,7 @@ jobs:
       TRAFIKLAB_GTFS_API_KEY: ${{ secrets.TRAFIKLAB_GTFS_API_KEY }}
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v9
+      - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
       - uses: actions/setup-python@v7
