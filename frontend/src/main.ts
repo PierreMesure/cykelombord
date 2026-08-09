@@ -1,11 +1,13 @@
 import "./style.css";
 import "iconify-icon";
 import trainIcon from "@iconify/icons-material-symbols/train";
+import keyboardArrowDownIcon from "@iconify/icons-material-symbols/keyboard-arrow-down";
 import { addIcon } from "iconify-icon";
 import { routerDataUrl } from "./router-data";
 
 // Keep the single glyph local so the planner remains functional offline.
 addIcon("material-symbols:train", trainIcon);
+addIcon("material-symbols:keyboard-arrow-down", keyboardArrowDownIcon);
 
 type Stop = { id: number; name: string; platform?: string };
 
@@ -52,16 +54,12 @@ let availableDates = new Set<string>();
 app.innerHTML = `
   <main>
     <header>
-      <p class="eyebrow">Experimentell reseplanerare</p>
+      <p class="eyebrow"><span class="beta-badge">BETA</span></p>
       <h1>Cykel ombord</h1>
-      <p class="intro">Hitta resor i ett GTFS-urval där cykelreglerna har granskats.</p>
+      <p class="intro">Hitta tågresor som tillåter cyklar</p>
     </header>
 
-    <section class="planner" aria-labelledby="planner-title">
-      <div class="planner-heading">
-        <h2 id="planner-title">Planera en resa</h2>
-        <p id="status" role="status">Laddar den lokala tidtabellen …</p>
-      </div>
+    <section class="planner" aria-label="Resesökning">
       <form id="route-form">
         <div class="fields">
           <label class="field">
@@ -77,31 +75,29 @@ app.innerHTML = `
           <label class="field date-field">
             <span>Resdatum</span>
             <input id="date" name="date" type="date" disabled>
+            <small id="date-error" class="date-error" hidden>Datumet finns inte i databasen. Enbart 90 dagar framåt</small>
           </label>
         </div>
         <div class="form-footer">
-          <p id="feed-note" class="feed-note">Laddar tillgängliga resdatum …</p>
           <button id="search" type="submit" disabled>Sök cykelvänlig resa</button>
         </div>
       </form>
     </section>
 
     <section id="results" class="results" aria-live="polite">
-      <p class="empty">Välj två hållplatser för att prova ruttsökningen.</p>
     </section>
 
     <footer>
-      <p>Ruttberäkningen körs lokalt i webbläsaren med den prunade GTFS-filen. Kontrollera alltid villkoren hos trafikbolaget före avresa.</p>
+      <p>Denna webbsida togs fram av <a href="https://mesu.re" rel="author">Pierre Mesure</a> och publiceras som <a href="https://github.com/PierreMesure/cykelombord">öppen källkod</a> ❤️ (AGPLv3).</p>
     </footer>
   </main>
 `;
 
 const form = document.querySelector<HTMLFormElement>("#route-form")!;
-const status = document.querySelector<HTMLElement>("#status")!;
-const feedNote = document.querySelector<HTMLElement>("#feed-note")!;
 const results = document.querySelector<HTMLElement>("#results")!;
 const searchButton = document.querySelector<HTMLButtonElement>("#search")!;
 const dateInput = document.querySelector<HTMLInputElement>("#date")!;
+const dateError = document.querySelector<HTMLElement>("#date-error")!;
 const fields = {
   from: {
     input: document.querySelector<HTMLInputElement>("#from")!,
@@ -161,12 +157,12 @@ function loadDate(value: string): void {
   if (!availableDates.has(value)) {
     ready = false;
     updateSearchState();
-    status.textContent = "Det datumet har ingen publicerad tidtabell.";
+    dateError.hidden = false;
     return;
   }
+  dateError.hidden = true;
   ready = false;
   updateSearchState();
-  status.textContent = "Laddar den lokala tidtabellen …";
   worker.postMessage({ type: "init", date: value });
 }
 
@@ -183,11 +179,9 @@ async function loadManifest(): Promise<void> {
     const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Stockholm" });
     dateInput.value = availableDates.has(today) ? today : dates[0]!;
     dateInput.disabled = false;
-    feedNote.textContent = `Tidtabeller finns ${dates[0]}–${dates.at(-1)}.`;
     loadDate(dateInput.value);
   } catch {
-    status.textContent = "Kunde inte läsa listan över publicerade tidtabeller.";
-    feedNote.textContent = "Ingen tidtabell är tillgänglig.";
+    results.innerHTML = `<p class="empty">Kunde inte läsa listan över publicerade tidtabeller.</p>`;
   }
 }
 
@@ -242,7 +236,7 @@ function renderRoute(route: Route | undefined): void {
       details.push(`<li class="detail-station detail-station-connection"><div class="station-times"><time>${formatTime(previous.arrivalTime)}</time><time>${formatTime(leg.departureTime)}</time></div><span class="station-dot" aria-hidden="true"></span><span class="station-name">${leg.from.name}</span><small class="station-wait">${formatDuration(waiting)}</small></li>`);
     }
     pathSegments.push(`<span class="path-segment" style="--segment-color: ${info.color}" title="${info.agency}"><iconify-icon icon="material-symbols:train" class="path-train" aria-hidden="true"></iconify-icon></span>`);
-    details.push(`<li class="detail-service" style="--segment-color: ${info.color}"><span class="detail-marker" aria-hidden="true"><iconify-icon icon="material-symbols:train" class="train-icon"></iconify-icon></span><div class="detail-title"><span class="line-badge">${leg.route.name}</span><strong>${operatorBadge(info)}${info.service || ""}</strong><small>${formatDuration(legDuration)}</small></div></li>`);
+    details.push(`<li class="detail-service" style="--segment-color: ${info.color}"><span class="detail-marker" aria-hidden="true"><iconify-icon icon="material-symbols:train" class="train-icon"></iconify-icon></span><div class="detail-title"><div class="detail-operator">${operatorBadge(info)}</div><div class="detail-service-info"><span class="line-badge">${leg.route.name}</span><strong>${info.service || ""}</strong><small>${formatDuration(legDuration)}</small></div></div></li>`);
   }
 
   details.push(`<li class="detail-station detail-station-end"><div class="station-times"><time>${formatTime(last.arrivalTime)}</time></div><span class="station-dot" aria-hidden="true"></span><span class="station-name">${last.to.name}</span></li>`);
@@ -257,7 +251,7 @@ function renderRoute(route: Route | undefined): void {
       <div class="journey-path" aria-label="Resans byten"><span class="path-node" aria-hidden="true"></span><span class="path-route">${pathSegments.join("")}</span><span class="path-node" aria-hidden="true"></span></div>
       <div class="path-labels"><span>${first.from.name}</span><span>${last.to.name}</span></div>
       <details class="journey-details">
-        <summary><span>Visa resans detaljer</span><span class="summary-arrow" aria-hidden="true">⌄</span></summary>
+        <summary><span class="summary-label"><span class="summary-closed">Detaljer</span><span class="summary-open">Göm detaljer</span></span><iconify-icon icon="material-symbols:keyboard-arrow-down" class="summary-arrow" aria-hidden="true"></iconify-icon></summary>
         <ol class="detail-legs">${details.join("")}</ol>
       </details>
     </article>
@@ -305,7 +299,6 @@ dateInput.addEventListener("change", () => loadDate(dateInput.value));
 worker.addEventListener("message", ({ data }: MessageEvent<WorkerResponse>) => {
   if (data.type === "ready") {
     ready = true;
-    status.textContent = `${data.stopCount} hållplatser laddade lokalt för ${data.date}`;
     fields.from.input.disabled = false;
     fields.to.input.disabled = false;
     updateSearchState();
@@ -314,7 +307,6 @@ worker.addEventListener("message", ({ data }: MessageEvent<WorkerResponse>) => {
   } else if (data.type === "route") {
     renderRoute(data.route);
   } else if (data.type === "error") {
-    status.textContent = data.message;
     results.innerHTML = `<p class="empty">${data.message}</p>`;
   }
 });

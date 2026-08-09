@@ -12,6 +12,7 @@ from cykelombord.gtfs import (
     GtfsError,
     _resolve_rules,
     _select_routes,
+    _shorten_stop_name,
     _write_pruned_feed,
     fetch_gtfs_feed_version,
     is_gtfs_update_available,
@@ -279,6 +280,12 @@ def test_pruning_drops_transfers_referencing_removed_trips(tmp_path: Path) -> No
             "to_trip_id": "trip",
         }
     ]
+
+
+def test_stop_names_are_shortened_for_generated_feed() -> None:
+    assert _shorten_stop_name("Stockholm Centralstation") == "Stockholm C"
+    assert _shorten_stop_name("Alpha station") == "Alpha"
+    assert _shorten_stop_name("Station Alpha") == "Station Alpha"
 
 
 def test_exact_reviewed_agency_alias_resolves_a_rule(tmp_path: Path) -> None:

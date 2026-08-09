@@ -121,6 +121,33 @@ def _stop_name_keys(value: str) -> set[str]:
     return keys
 
 
+def _shorten_stop_name(value: str) -> str:
+    """Use compact station labels in the generated feed."""
+    shortened = re.sub(r"entralstation", "", value, flags=re.IGNORECASE)
+    shortened = re.sub(r"\s+station$", "", shortened, flags=re.IGNORECASE)
+    return shortened.strip()
+
+
+def _shorten_stop_names(stops_path: Path) -> None:
+    """Shorten ``stop_name`` values without changing GTFS identifiers."""
+    with stops_path.open(encoding="utf-8-sig", newline="") as handle:
+        reader = csv.DictReader(handle)
+        headers = reader.fieldnames or []
+        rows = list(reader)
+    if "stop_name" not in headers:
+        return
+    for row in rows:
+        row["stop_name"] = _shorten_stop_name(row.get("stop_name", ""))
+    with NamedTemporaryFile(
+        dir=stops_path.parent, mode="w", encoding="utf-8", newline="", delete=False
+    ) as temporary:
+        writer = csv.DictWriter(temporary, fieldnames=headers)
+        writer.writeheader()
+        writer.writerows(rows)
+        temporary_path = Path(temporary.name)
+    temporary_path.replace(stops_path)
+
+
 def _sql_path(path: Path) -> str:
     return path.as_posix().replace("'", "''")
 
@@ -608,6 +635,7 @@ def build_gtfs(
             output_dir=feed_dir,
             route_ids=route_ids,
         )
+        _shorten_stop_names(feed_dir / "stops.txt")
         archive_path = output_dir / "bike.gtfs.zip"
         _write_deterministic_zip(feed_dir, archive_path)
         _write_route_metadata(feed_dir, output_dir / "route-metadata.json")
