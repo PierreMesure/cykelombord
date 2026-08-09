@@ -1,9 +1,8 @@
-const releaseDataBaseUrl =
-  "https://github.com/PierreMesure/cykelombord/releases/download/router-data";
+const publishedDataBaseUrl = "https://cdn.cykelombord.mesu.re";
 
-// Local development uses generated files copied to public/router. Production
-// always reads the rolling assets from the stable GitHub Release tag.
-const routerDataBaseUrl = import.meta.env.DEV ? "/router" : releaseDataBaseUrl;
+// Local development uses symlinked generated files in public/router. Production
+// uses the CORS-enabled GitHub Pages data site.
+const routerDataBaseUrl = import.meta.env.DEV ? "/router" : publishedDataBaseUrl;
 
 export function routerDataUrl(filename: string): string {
   return `${routerDataBaseUrl}/${filename}`;

@@ -12,13 +12,15 @@ on:
         type: boolean
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     env:
-      RELEASE_TAG: router-data
+      DATA_BASE_URL: https://cdn.cykelombord.mesu.re
       TRAFIKLAB_GTFS_API_KEY: ${{ secrets.TRAFIKLAB_GTFS_API_KEY }}
     steps:
       - uses: actions/checkout@v7
@@ -43,40 +45,39 @@ jobs:
           available="$(sed -n 's/^update_available=//p' /tmp/feed-info.txt)"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "available=$available" >> "$GITHUB_OUTPUT"
-      - name: Check for a prior rolling release
-        id: release
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Check for prior published data
+        id: published
         run: |
-          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+          if curl --fail --silent --show-error --output /dev/null "$DATA_BASE_URL/bike.gtfs.zip"; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
       - name: Build a new pruned feed
-        if: steps.feed.outputs.available == 'true' || inputs.force_source_rebuild == true || steps.release.outputs.exists != 'true'
+        if: steps.feed.outputs.available == 'true' || inputs.force_source_rebuild == true || steps.published.outputs.exists != 'true'
         run: uv run cykelombord pipeline update --days 90
       - name: Reuse the current pruned feed
-        if: steps.feed.outputs.available != 'true' && inputs.force_source_rebuild != true && steps.release.outputs.exists == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
+        if: steps.feed.outputs.available != 'true' && inputs.force_source_rebuild != true && steps.published.outputs.exists == 'true'
         run: |
-          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern bike.gtfs.zip --pattern manifest.json --pattern route-metadata.json --pattern rules-resolved.json --dir data/generated/gtfs
+          mkdir -p data/generated/gtfs
+          curl --fail --silent --show-error --location --output data/generated/gtfs/bike.gtfs.zip "$DATA_BASE_URL/bike.gtfs.zip"
+          curl --fail --silent --show-error --location --output data/generated/gtfs/manifest.json "$DATA_BASE_URL/manifest.json"
+          curl --fail --silent --show-error --location --output data/generated/gtfs/route-metadata.json "$DATA_BASE_URL/route-metadata.json"
+          curl --fail --silent --show-error --location --output data/generated/gtfs/rules-resolved.json "$DATA_BASE_URL/rules-resolved.json"
           uv run cykelombord gtfs validate
           uv run cykelombord router build --days 90
-      - name: Replace the rolling release assets
-        uses: ncipollo/release-action@v1
+      - name: Stage Pages assets at the site root
+        run: |
+          mkdir -p data/pages
+          cp data/generated/gtfs/* data/pages/
+          cp data/generated/router/* data/pages/
+          cp data/generated/validation/* data/pages/
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
         with:
-          tag: router-data
-          commit: ${{ github.sha }}
-          name: Rolling router data
-          body: Rolling GTFS-derived router data. Assets are replaced on each successful daily build.
-          allowUpdates: true
-          removeArtifacts: true
-          replacesArtifacts: true
-          artifactErrorsFailBuild: true
-          makeLatest: true
-          artifacts: >-
-            data/generated/gtfs/bike.gtfs.zip,data/generated/gtfs/manifest.json,
-            data/generated/gtfs/route-metadata.json,data/generated/gtfs/rules-resolved.json,
-            data/generated/router/*,data/generated/validation/*
+          path: data/pages
+      - name: Deploy data to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

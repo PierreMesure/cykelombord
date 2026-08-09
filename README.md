@@ -172,11 +172,10 @@ Pass `--start-date YYYY-MM-DD` to `router build` or `pipeline update` for a repr
 ## Data and attribution
 
 Downloaded source material is not committed. Put the current guide in `data/source/` when the
-conversion milestone begins. Generated artifacts are published daily to the rolling GitHub Release
-tag [`router-data`](https://github.com/PierreMesure/cykelombord/releases/tag/router-data). The
-frontend uses the tag's stable asset URLs in production; the release is updated in place, so it
-contains only the current pruned GTFS and rolling 90-day router set. Locally, the frontend continues
-to read `/router/` after `npm --prefix frontend run prepare-router-data`.
+conversion milestone begins. Generated artifacts are published daily at
+[cdn.cykelombord.mesu.re](https://cdn.cykelombord.mesu.re). The frontend uses this GitHub Pages data
+site in production. Locally, it continues to read `/router/` after
+`npm --prefix frontend run prepare-router-data`.
 
 The eventual application must display the attribution required by Trafiklab's data licence and
 retain a source URL and retrieval date for every manually maintained bicycle rule.
