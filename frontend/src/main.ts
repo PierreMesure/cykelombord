@@ -3,32 +3,12 @@ import "iconify-icon";
 import trainIcon from "@iconify/icons-material-symbols/train";
 import keyboardArrowDownIcon from "@iconify/icons-material-symbols/keyboard-arrow-down";
 import { addIcon } from "iconify-icon";
+import { renderJourney, type Route, type Stop } from "./journey";
 import { routerDataUrl } from "./router-data";
 
 // Keep the single glyph local so the planner remains functional offline.
 addIcon("material-symbols:train", trainIcon);
 addIcon("material-symbols:keyboard-arrow-down", keyboardArrowDownIcon);
-
-type Stop = { id: number; name: string; platform?: string };
-
-type VehicleLeg = {
-  kind: "vehicle";
-  from: Stop;
-  to: Stop;
-  departureTime: number;
-  arrivalTime: number;
-  route: { name: string; type: string };
-  metadata: Array<{ agency: string; service: string; agency_id: string }>;
-};
-
-type TransferLeg = {
-  kind: "transfer";
-  from: Stop;
-  to: Stop;
-  duration?: number;
-};
-
-type Route = { legs: Array<VehicleLeg | TransferLeg> };
 
 type WorkerResponse =
   | { type: "ready"; stopCount: number; date: string }
@@ -109,46 +89,6 @@ const fields = {
   },
 };
 
-function formatTime(minutes: number): string {
-  const hours = Math.floor(minutes / 60) % 24;
-  const mins = minutes % 60;
-  return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
-}
-
-function formatDuration(minutes: number): string {
-  const rounded = Math.max(0, Math.round(minutes));
-  if (rounded < 60) return `${rounded} min`;
-  const hours = Math.floor(rounded / 60);
-  const remaining = rounded % 60;
-  return remaining ? `${hours} h ${remaining} min` : `${hours} h`;
-}
-
-const agencyColors = ["#286b59", "#b85c38", "#5367a6", "#9b4f76", "#7c6a32"];
-
-function agencyInfo(leg: VehicleLeg): { agency: string; service: string; initials: string; color: string; agencyIds: string[] } {
-  const agencies = [...new Set(leg.metadata.map((item) => item.agency).filter(Boolean))];
-  const services = [...new Set(leg.metadata.map((item) => item.service).filter(Boolean))];
-  const agencyIds = [...new Set(leg.metadata.map((item) => item.agency_id).filter(Boolean))];
-  const agency = agencies.length ? agencies.join(" / ") : "Operatör saknas";
-  const service = services.length === 1 ? services[0]! : "";
-  const initials = agency
-    .split(/\s+/)
-    .filter((word) => word.length > 2)
-    .slice(0, 2)
-    .map((word) => word[0])
-    .join("")
-    .toUpperCase() || "TÅG";
-  const colorIndex = [...agency].reduce((hash, character) => hash + character.charCodeAt(0), 0);
-  return { agency, service, initials, color: agencyColors[colorIndex % agencyColors.length]!, agencyIds };
-}
-
-function operatorBadge(info: ReturnType<typeof agencyInfo>): string {
-  const agencyId = info.agencyIds[0];
-  const fallback = `<span class="operator-fallback"><span class="operator-initials">${info.initials}</span><span>${info.agency}</span></span>`;
-  if (!agencyId) return fallback;
-  return `<span class="operator-badge"><img class="operator-logo" src="https://reseplanerare.resrobot.se/img/light/operators/${agencyId}.png" alt="${info.agency}" loading="lazy"><span class="operator-fallback" hidden><span class="operator-initials">${info.initials}</span><span>${info.agency}</span></span></span>`;
-}
-
 function updateSearchState(): void {
   searchButton.disabled = !ready || !fromStop || !toStop;
 }
@@ -209,60 +149,6 @@ function showSuggestions(field: "from" | "to", stops: Stop[]): void {
   container.hidden = stops.length === 0;
 }
 
-function renderRoute(route: Route | undefined): void {
-  if (!route) {
-    results.innerHTML = `<p class="empty">Ingen cykelvänlig resa hittades i den här tidtabellen.</p>`;
-    return;
-  }
-
-  const vehicles = route.legs.filter((leg): leg is VehicleLeg => leg.kind === "vehicle");
-  const first = vehicles[0];
-  const last = vehicles.at(-1);
-  if (!first || !last) return;
-
-  const changes = Math.max(0, vehicles.length - 1);
-  const pathSegments: string[] = [];
-  const details: string[] = [];
-
-  details.push(`<li class="detail-station detail-station-start"><div class="station-times"><time>${formatTime(first.departureTime)}</time></div><span class="station-dot" aria-hidden="true"></span><span class="station-name">${first.from.name}</span></li>`);
-
-  for (const [index, leg] of vehicles.entries()) {
-    const info = agencyInfo(leg);
-    const legDuration = leg.arrivalTime - leg.departureTime;
-    if (index > 0) {
-      const previous = vehicles[index - 1]!;
-      const waiting = Math.max(0, leg.departureTime - previous.arrivalTime);
-      pathSegments.push(`<span class="path-dent" aria-label="Byte"></span>`);
-      details.push(`<li class="detail-station detail-station-connection"><div class="station-times"><time>${formatTime(previous.arrivalTime)}</time><time>${formatTime(leg.departureTime)}</time></div><span class="station-dot" aria-hidden="true"></span><span class="station-name">${leg.from.name}</span><small class="station-wait">${formatDuration(waiting)}</small></li>`);
-    }
-    pathSegments.push(`<span class="path-segment" style="--segment-color: ${info.color}" title="${info.agency}"><iconify-icon icon="material-symbols:train" class="path-train" aria-hidden="true"></iconify-icon></span>`);
-    details.push(`<li class="detail-service" style="--segment-color: ${info.color}"><span class="detail-marker" aria-hidden="true"><iconify-icon icon="material-symbols:train" class="train-icon"></iconify-icon></span><div class="detail-title"><div class="detail-operator">${operatorBadge(info)}</div><div class="detail-service-info"><span class="line-badge">${leg.route.name}</span><strong>${info.service || ""}</strong><small>${formatDuration(legDuration)}</small></div></div></li>`);
-  }
-
-  details.push(`<li class="detail-station detail-station-end"><div class="station-times"><time>${formatTime(last.arrivalTime)}</time></div><span class="station-dot" aria-hidden="true"></span><span class="station-name">${last.to.name}</span></li>`);
-
-  results.innerHTML = `
-    <article class="journey">
-      <div class="journey-summary">
-        <div><strong>${formatTime(first.departureTime)}</strong><span>${first.from.name}</span></div>
-        <div class="duration"><strong>${formatDuration(last.arrivalTime - first.departureTime)}</strong><span>${changes} ${changes === 1 ? "byte" : "byten"}</span></div>
-        <div><strong>${formatTime(last.arrivalTime)}</strong><span>${last.to.name}</span></div>
-      </div>
-      <div class="journey-path" aria-label="Resans byten"><span class="path-node" aria-hidden="true"></span><span class="path-route">${pathSegments.join("")}</span><span class="path-node" aria-hidden="true"></span></div>
-      <div class="path-labels"><span>${first.from.name}</span><span>${last.to.name}</span></div>
-      <details class="journey-details">
-        <summary><span class="summary-label"><span class="summary-closed">Detaljer</span><span class="summary-open">Göm detaljer</span></span><iconify-icon icon="material-symbols:keyboard-arrow-down" class="summary-arrow" aria-hidden="true"></iconify-icon></summary>
-        <ol class="detail-legs">${details.join("")}</ol>
-      </details>
-    </article>
-  `;
-  results.querySelectorAll<HTMLImageElement>(".operator-logo").forEach((image) => {
-    const fallback = image.nextElementSibling as HTMLElement | null;
-    image.addEventListener("load", () => { if (fallback) fallback.hidden = true; });
-    image.addEventListener("error", () => { image.hidden = true; if (fallback) fallback.hidden = false; });
-  });
-}
-
 for (const [field, controls] of Object.entries(fields) as Array<
   ["from" | "to", (typeof fields)["from"]]
 >) {
@@ -305,7 +191,7 @@ worker.addEventListener("message", ({ data }: MessageEvent<WorkerResponse>) => {
   } else if (data.type === "suggestions") {
     showSuggestions(data.field, data.stops);
   } else if (data.type === "route") {
-    renderRoute(data.route);
+    results.replaceChildren(renderJourney(data.route));
   } else if (data.type === "error") {
     results.innerHTML = `<p class="empty">${data.message}</p>`;
   }
