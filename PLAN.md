@@ -26,7 +26,7 @@ The architecture has three products:
 
 Status: complete.
 
-- Create a Python 3.12 project managed with uv.
+- Create a Python 3.14 project managed with uv.
 - Create a Vite and TypeScript npm project under `frontend/`.
 - Add local and example environment files containing separate ResRobot and GTFS credentials.
 - Add baseline Python and frontend CI checks.

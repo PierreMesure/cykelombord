@@ -25,7 +25,7 @@ validation and exploration, not publication yet.
 
 ## Local setup
 
-Prerequisites are Python 3.12, [uv](https://docs.astral.sh/uv/), Node.js 22, and npm. The optional
+Prerequisites are Python 3.12 or later, [uv](https://docs.astral.sh/uv/), Node.js 24, and npm. The optional
 `guide` extra installs [PyMuPDF4LLM](https://pymupdf.readthedocs.io/en/latest/pymupdf4llm/) only on
 machines that update the source guide.
 
