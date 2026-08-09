@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import csv
 from pathlib import Path
 from typing import Any
@@ -321,7 +323,7 @@ class _FeedInfoResponse:
 
 
 class _FeedInfoClient:
-    def __enter__(self) -> "_FeedInfoClient":
+    def __enter__(self) -> _FeedInfoClient:
         return self
 
     def __exit__(self, *args: object) -> None:
