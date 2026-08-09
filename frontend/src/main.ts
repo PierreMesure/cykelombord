@@ -2,6 +2,7 @@ import "./style.css";
 import "iconify-icon";
 import trainIcon from "@iconify/icons-material-symbols/train";
 import keyboardArrowDownIcon from "@iconify/icons-material-symbols/keyboard-arrow-down";
+import compareArrowsIcon from "@iconify/icons-material-symbols/compare-arrows";
 import { addIcon } from "iconify-icon";
 import { renderJourney, type Route, type Stop } from "./journey";
 import { routerDataUrl } from "./router-data";
@@ -9,11 +10,12 @@ import { routerDataUrl } from "./router-data";
 // Keep the single glyph local so the planner remains functional offline.
 addIcon("material-symbols:train", trainIcon);
 addIcon("material-symbols:keyboard-arrow-down", keyboardArrowDownIcon);
+addIcon("material-symbols:compare-arrows", compareArrowsIcon);
 
 type WorkerResponse =
   | { type: "ready"; stopCount: number; date: string }
   | { type: "suggestions"; field: "from" | "to"; stops: Stop[] }
-  | { type: "route"; route?: Route }
+  | { type: "route"; routes: Route[]; journey: "outbound" | "return"; searchId: number }
   | { type: "error"; message: string };
 
 const app = document.querySelector<HTMLElement>("#app");
@@ -30,6 +32,19 @@ let ready = false;
 let fromStop: Stop | undefined;
 let toStop: Stop | undefined;
 let availableDates = new Set<string>();
+let latestSearchId = 0;
+let pendingRouteResults: {
+  searchId: number;
+  handle: (journey: "outbound" | "return", routes: Route[]) => void;
+} | undefined;
+const urlParams = new URLSearchParams(window.location.search);
+const pendingUrlStops: Partial<Record<"from" | "to", string>> = {
+  from: urlParams.get("from") ?? undefined,
+  to: urlParams.get("to") ?? undefined,
+};
+let hydratingUrl = Object.values(pendingUrlStops).some(Boolean);
+const shouldSearchFromUrl = Boolean(urlParams.get("from") && urlParams.get("to"));
+let urlSearchTriggered = false;
 
 app.innerHTML = `
   <main>
@@ -45,20 +60,31 @@ app.innerHTML = `
     <section class="planner" aria-label="Resesökning">
       <form id="route-form">
         <div class="fields">
-          <label class="field">
+          <label class="field from-field">
             <span>Från</span>
             <input id="from" name="from" role="combobox" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" aria-autocomplete="list" aria-controls="from-suggestions" aria-expanded="false" placeholder="t.ex. Stockholm C" disabled>
             <div id="from-suggestions" class="suggestions" role="listbox" hidden></div>
           </label>
-          <label class="field">
+          <button id="swap-stations" class="swap-button" type="button" aria-label="Byt från- och till-hållplats" title="Byt hållplatser">
+            <iconify-icon icon="material-symbols:compare-arrows" aria-hidden="true"></iconify-icon>
+          </button>
+          <label class="field to-field">
             <span>Till</span>
             <input id="to" name="to" role="combobox" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" aria-autocomplete="list" aria-controls="to-suggestions" aria-expanded="false" placeholder="t.ex. Uppsala C" disabled>
             <div id="to-suggestions" class="suggestions" role="listbox" hidden></div>
           </label>
-          <label class="field date-field">
+          <label class="field date-field departure-date-field">
             <span>Resdatum</span>
             <input id="date" name="date" type="date" disabled>
             <small id="date-error" class="date-error" hidden>Datumet finns inte i databasen. Enbart 90 dagar framåt</small>
+          </label>
+          <label class="field date-field return-date-field">
+            <span>Returdatum</span>
+            <div id="return-date-control" class="date-control" data-empty="true">
+              <input id="return-date" name="return-date" type="date">
+              <button id="clear-return-date" class="date-clear" type="button" aria-label="Ta bort returdatum" title="Ta bort returdatum" hidden>×</button>
+            </div>
+            <small id="return-date-error" class="date-error" hidden>Datumet finns inte i databasen. Enbart 90 dagar framåt</small>
           </label>
         </div>
         <div class="form-footer">
@@ -81,6 +107,11 @@ const results = document.querySelector<HTMLElement>("#results")!;
 const searchButton = document.querySelector<HTMLButtonElement>("#search")!;
 const dateInput = document.querySelector<HTMLInputElement>("#date")!;
 const dateError = document.querySelector<HTMLElement>("#date-error")!;
+const returnDateInput = document.querySelector<HTMLInputElement>("#return-date")!;
+const returnDateControl = document.querySelector<HTMLElement>("#return-date-control")!;
+const returnDateError = document.querySelector<HTMLElement>("#return-date-error")!;
+const clearReturnDateButton = document.querySelector<HTMLButtonElement>("#clear-return-date")!;
+const swapStationsButton = document.querySelector<HTMLButtonElement>("#swap-stations")!;
 const fields = {
   from: {
     input: document.querySelector<HTMLInputElement>("#from")!,
@@ -99,6 +130,23 @@ const suggestionState: Record<FieldName, { stops: Stop[]; activeIndex: number }>
 
 function updateSearchState(): void {
   searchButton.disabled = !ready || !fromStop || !toStop;
+}
+
+function maybeSearchFromUrl(): void {
+  if (shouldSearchFromUrl && !hydratingUrl && !urlSearchTriggered && ready && fromStop && toStop) {
+    urlSearchTriggered = true;
+    form.requestSubmit();
+  }
+}
+
+function syncUrl(): void {
+  const params = new URLSearchParams(window.location.search);
+  for (const [key, value] of [["from", fromStop?.name ?? pendingUrlStops.from], ["to", toStop?.name ?? pendingUrlStops.to], ["fromd", dateInput.value], ["tod", returnDateInput.value]] as Array<[string, string | undefined]>) {
+    if (value) params.set(key, value);
+    else params.delete(key);
+  }
+  const query = params.toString();
+  window.history.replaceState(null, "", query ? `${window.location.pathname}?${query}` : window.location.pathname);
 }
 
 function loadDate(value: string): void {
@@ -121,12 +169,24 @@ async function loadManifest(): Promise<void> {
     const manifest = (await response.json()) as { available_dates?: Array<{ date: string }> };
     const dates = manifest.available_dates?.map((item) => item.date) ?? [];
     if (!dates.length) throw new Error("empty manifest");
-    availableDates = new Set(dates);
-    dateInput.min = dates[0]!;
-    dateInput.max = dates.at(-1)!;
-    const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Stockholm" });
-    dateInput.value = availableDates.has(today) ? today : dates[0]!;
+  availableDates = new Set(dates);
+  dateInput.min = dates[0]!;
+  dateInput.max = dates.at(-1)!;
+  returnDateInput.min = dates[0]!;
+  returnDateInput.max = dates.at(-1)!;
+  const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Stockholm" });
+    const requestedDeparture = urlParams.get("fromd");
+    dateInput.value = requestedDeparture && availableDates.has(requestedDeparture)
+      ? requestedDeparture
+      : availableDates.has(today) ? today : dates[0]!;
+    const requestedReturn = urlParams.get("tod");
+    if (requestedReturn && availableDates.has(requestedReturn)) {
+      returnDateInput.value = requestedReturn;
+      returnDateControl.dataset.empty = "false";
+      clearReturnDateButton.hidden = false;
+    }
     dateInput.disabled = false;
+    syncUrl();
     loadDate(dateInput.value);
   } catch {
     results.innerHTML = `<p class="empty">Kunde inte läsa listan över publicerade tidtabeller.</p>`;
@@ -151,6 +211,7 @@ function selectStop(field: FieldName, stop: Stop): void {
   if (field === "from") fromStop = stop;
   else toStop = stop;
   updateSearchState();
+  syncUrl();
 }
 
 function setActiveSuggestion(field: FieldName, index: number): void {
@@ -202,6 +263,8 @@ for (const [field, controls] of Object.entries(fields) as Array<
   [FieldName, (typeof fields)["from"]]
 >) {
   controls.input.addEventListener("input", () => {
+    delete pendingUrlStops[field];
+    hydratingUrl = Object.values(pendingUrlStops).some(Boolean);
     if (field === "from") fromStop = undefined;
     else toStop = undefined;
     updateSearchState();
@@ -241,28 +304,116 @@ for (const [field, controls] of Object.entries(fields) as Array<
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();
+  if (hydratingUrl) return;
   if (!fromStop || !toStop) return;
+  const searchId = ++latestSearchId;
+  const returnDate = returnDateInput.value && availableDates.has(returnDateInput.value)
+    ? returnDateInput.value
+    : undefined;
+  const renderResults = (outbound: Route[], returnRoutes: Route[] = []) => {
+    const fragment = document.createDocumentFragment();
+    for (const route of outbound) fragment.append(renderJourney(route));
+    if (!outbound.length) fragment.append(renderJourney(undefined));
+    if (returnDate) {
+      const separator = document.createElement("p");
+      separator.className = "return-separator";
+      separator.textContent = "Retur";
+      fragment.append(separator);
+      for (const route of returnRoutes) fragment.append(renderJourney(route));
+      if (!returnRoutes.length) fragment.append(renderJourney(undefined));
+    }
+    results.replaceChildren(fragment);
+  };
   results.innerHTML = `<p class="empty">Söker i den lokala tidtabellen …</p>`;
   worker.postMessage({
     type: "route",
+    date: dateInput.value,
     from: fromStop.id,
     to: toStop.id,
     departureTime: 8 * 60,
+    journey: "outbound",
+    searchId,
   });
+  if (returnDate) {
+    worker.postMessage({
+      type: "route",
+      date: returnDate,
+      from: toStop.id,
+      to: fromStop.id,
+      departureTime: 8 * 60,
+      journey: "return",
+      searchId,
+    });
+  }
+  const routeResults: { outbound: Route[]; return: Route[] } = { outbound: [], return: [] };
+  let outboundReceived = false;
+  let returnReceived = false;
+  const renderPendingResults = (journey: "outbound" | "return", routes: Route[]) => {
+    routeResults[journey] = routes;
+    if (journey === "outbound") outboundReceived = true;
+    else returnReceived = true;
+    if (!returnDate && outboundReceived) renderResults(routes);
+    if (returnDate && outboundReceived && returnReceived) renderResults(routeResults.outbound, routeResults.return);
+  };
+  pendingRouteResults = { searchId, handle: renderPendingResults };
 });
 
 dateInput.addEventListener("change", () => loadDate(dateInput.value));
+dateInput.addEventListener("change", () => syncUrl());
+returnDateInput.addEventListener("change", () => {
+  returnDateError.hidden = !returnDateInput.value || availableDates.has(returnDateInput.value);
+  clearReturnDateButton.hidden = !returnDateInput.value;
+  returnDateControl.dataset.empty = String(!returnDateInput.value);
+  syncUrl();
+});
+clearReturnDateButton.addEventListener("click", () => {
+  returnDateInput.value = "";
+  returnDateControl.dataset.empty = "true";
+  returnDateError.hidden = true;
+  clearReturnDateButton.hidden = true;
+  syncUrl();
+});
+swapStationsButton.addEventListener("click", () => {
+  const previousFrom = fromStop;
+  fromStop = toStop;
+  toStop = previousFrom;
+  const previousValue = fields.from.input.value;
+  fields.from.input.value = fields.to.input.value;
+  fields.to.input.value = previousValue;
+  hideSuggestions("from");
+  hideSuggestions("to");
+  updateSearchState();
+  syncUrl();
+});
 
 worker.addEventListener("message", ({ data }: MessageEvent<WorkerResponse>) => {
   if (data.type === "ready") {
     ready = true;
     fields.from.input.disabled = false;
     fields.to.input.disabled = false;
+    for (const field of ["from", "to"] as const) {
+      const requested = pendingUrlStops[field];
+      if (requested) worker.postMessage({ type: "suggest", field, query: requested });
+    }
     updateSearchState();
+    maybeSearchFromUrl();
   } else if (data.type === "suggestions") {
-    showSuggestions(data.field, data.stops);
+    const requested = pendingUrlStops[data.field];
+    const exactMatch = requested
+      ? data.stops.find((stop) => stop.name.localeCompare(requested, undefined, { sensitivity: "accent" }) === 0)
+      : undefined;
+    if (exactMatch) {
+      delete pendingUrlStops[data.field];
+      selectStop(data.field, exactMatch);
+      hydratingUrl = Object.values(pendingUrlStops).some(Boolean);
+      maybeSearchFromUrl();
+    } else {
+      showSuggestions(data.field, data.stops);
+    }
   } else if (data.type === "route") {
-    results.replaceChildren(renderJourney(data.route));
+    if (pendingRouteResults?.searchId === data.searchId) {
+      pendingRouteResults.handle(data.journey, data.routes);
+    }
   } else if (data.type === "error") {
     results.innerHTML = `<p class="empty">${data.message}</p>`;
   }
