@@ -1,6 +1,6 @@
 import pytest
 
-from cykelpatag.guide import (
+from cykelombord.guide import (
     GuideError,
     add_markdown_provenance,
     extract_guide_pdf_url,

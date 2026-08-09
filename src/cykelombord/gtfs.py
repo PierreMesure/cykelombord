@@ -21,7 +21,7 @@ import httpx
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from cykelpatag.rules import Rule, Ruleset, load_ruleset
+from cykelombord.rules import Rule, Ruleset, load_ruleset
 
 DEFAULT_GTFS_URL = "https://api.resrobot.se/gtfs/sweden.zip"
 DEFAULT_GTFS_FEED_INFO_URL = "https://api.resrobot.se/samtrafiken/gtfs/feed_info.txt"
@@ -592,7 +592,7 @@ def build_gtfs(
         source_path = source_archive
     source_sha256 = hashlib.sha256(archive_bytes).hexdigest()
 
-    with TemporaryDirectory(prefix="cykelpatag-gtfs-") as temporary_name:
+    with TemporaryDirectory(prefix="cykelombord-gtfs-") as temporary_name:
         temporary_dir = Path(temporary_name)
         extracted_dir = temporary_dir / "source"
         extracted_dir.mkdir()

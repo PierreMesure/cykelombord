@@ -6,20 +6,20 @@ from typing import Annotated
 
 import typer
 
-from cykelpatag.gtfs import (
+from cykelombord.gtfs import (
     DEFAULT_GTFS_URL,
     GtfsError,
     build_gtfs,
     fetch_gtfs_feed_version,
     is_gtfs_update_available,
 )
-from cykelpatag.guide import DEFAULT_MARKDOWN_PAGE_URL, GuideError, update_guide
-from cykelpatag.router import RouterBuildError, build_router_data
-from cykelpatag.rules import RulesError, load_ruleset
-from cykelpatag.validation import GtfsValidationError, validate_gtfs
+from cykelombord.guide import DEFAULT_MARKDOWN_PAGE_URL, GuideError, update_guide
+from cykelombord.router import RouterBuildError, build_router_data
+from cykelombord.rules import RulesError, load_ruleset
+from cykelombord.validation import GtfsValidationError, validate_gtfs
 
 app = typer.Typer(
-    name="cykelpatag",
+    name="cykelombord",
     help="Prepare bicycle-friendly public transport routing data.",
     no_args_is_help=True,
 )

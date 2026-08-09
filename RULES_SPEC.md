@@ -29,7 +29,7 @@ Use the current `data/generated/guide.md` and the source PDF metadata. Follow th
 ```yaml
 schema_version: 1
 source:
-  name: Cykel på tåg
+  name: Cykel ombord
   edition: 2026-06
   url: https://example.invalid/Cykel_pa_Tag_2026-06-07.pdf
   sha256: 64-lowercase-hex-characters
@@ -88,7 +88,7 @@ service is matched; it is responsible for evaluating a declared recurrence.
 Run:
 
 ```bash
-uv run cykelpatag rules validate
+uv run cykelombord rules validate
 ```
 
 The parser rejects unknown fields, duplicate IDs, missing evidence, invalid enums, invalid capacity

@@ -53,7 +53,7 @@ app.innerHTML = `
   <main>
     <header>
       <p class="eyebrow">Experimentell reseplanerare</p>
-      <h1>Cykel på tåg</h1>
+      <h1>Cykel ombord</h1>
       <p class="intro">Hitta resor i ett GTFS-urval där cykelreglerna har granskats.</p>
     </header>
 

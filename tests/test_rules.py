@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from cykelpatag.rules import RulesError, load_ruleset
+from cykelombord.rules import RulesError, load_ruleset
 
 RULESET_PATH = Path("rules/bike-rules.yaml")
 

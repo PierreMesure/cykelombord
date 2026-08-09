@@ -1,6 +1,6 @@
 from typer.testing import CliRunner
 
-from cykelpatag.cli import app
+from cykelombord.cli import app
 
 
 def test_cli_displays_help() -> None:

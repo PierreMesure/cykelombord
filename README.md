@@ -17,7 +17,7 @@ validation and exploration, not publication yet.
 │   └── generated/    # Generated Markdown, rules, and routing data (gitignored)
 ├── frontend/         # Vite and TypeScript web application
 ├── rules/            # Reviewed, human-authored bicycle policy rules
-├── src/cykelpatag/  # Python data-pipeline package
+├── src/cykelombord/  # Python data-pipeline package
 ├── tests/            # Python tests
 ├── PLAN.md          # Chosen implementation plan
 └── RESEARCH.md      # Research findings and alternatives
@@ -58,7 +58,7 @@ Create a rolling set of browser timetables from a generated bike subset, copy th
 frontend's local public directory, then start the prototype:
 
 ```bash
-cykelpatag router build --days 90
+cykelombord router build --days 90
 npm --prefix frontend run prepare-router-data
 npm --prefix frontend run dev
 ```
@@ -77,7 +77,7 @@ Install the optional extractor only when this command is needed:
 
 ```bash
 uv sync --extra guide
-uv run cykelpatag guide update
+uv run cykelombord guide update
 ```
 
 It writes the downloaded PDF to `data/source/cykel-pa-tag.pdf` and these generated review inputs:
@@ -108,7 +108,7 @@ The schema and repeatable extraction instructions are in [`RULES_SPEC.md`](RULES
 the checked-in ruleset with:
 
 ```bash
-uv run cykelpatag rules validate
+uv run cykelombord rules validate
 ```
 
 ## Build the first bike-compatible GTFS subset
@@ -120,7 +120,7 @@ affected only by eligibility rules; date-specific information such as Vätternru
 frontend advisory rather than incorrectly removing a service from every date.
 
 ```bash
-uv run cykelpatag gtfs build
+uv run cykelombord gtfs build
 ```
 
 This requires `TRAFIKLAB_GTFS_API_KEY`, enabled specifically for **GTFS Sverige 2**. The separate
@@ -130,7 +130,7 @@ or fallback requests. Outputs are written to `data/generated/gtfs/` and are igno
 To re-run the pruner against an already downloaded archive without consuming an API request:
 
 ```bash
-uv run cykelpatag gtfs build --source-archive data/source/gtfs-sweden-2.zip
+uv run cykelombord gtfs build --source-archive data/source/gtfs-sweden-2.zip
 ```
 
 This is an intentionally conservative prototype, not a publishable feed yet: the accompanying
@@ -145,19 +145,19 @@ warnings.
 
 ```bash
 # Download and convert the current source guide (requires uv sync --extra guide)
-cykelpatag guide update
+cykelombord guide update
 
 # Download GTFS Sverige 2, prune it, and write rules-resolved.json
-cykelpatag gtfs build
+cykelombord gtfs build
 
 # Validate the pruned archive
-cykelpatag gtfs validate
+cykelombord gtfs validate
 
 # Compile a rolling range of daily browser artifacts and router-manifest.json
-cykelpatag router build --days 90
+cykelombord router build --days 90
 
 # Daily CI/CD command: download, prune, validate, then compile 90 days
-cykelpatag pipeline update --days 90
+cykelombord pipeline update --days 90
 ```
 
 `pipeline update` deliberately stops before router generation if pruning produces an invalid GTFS.
@@ -167,7 +167,7 @@ Pass `--start-date YYYY-MM-DD` to `router build` or `pipeline update` for a repr
 
 Downloaded source material is not committed. Put the current guide in `data/source/` when the
 conversion milestone begins. Generated artifacts are published daily to the rolling GitHub Release
-tag [`router-data`](https://github.com/PierreMesure/cykelpa-ta-g/releases/tag/router-data). The
+tag [`router-data`](https://github.com/PierreMesure/cykelombord/releases/tag/router-data). The
 frontend uses the tag's stable asset URLs in production; the release is updated in place, so it
 contains only the current pruned GTFS and rolling 90-day router set. Locally, the frontend continues
 to read `/router/` after `npm --prefix frontend run prepare-router-data`.

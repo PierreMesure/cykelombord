@@ -38,7 +38,7 @@ jobs:
       - name: Check Trafiklab feed version
         id: feed
         run: |
-          uv run cykelpatag gtfs has-update | tee /tmp/feed-info.txt
+          uv run cykelombord gtfs has-update | tee /tmp/feed-info.txt
           version="$(sed -n 's/^feed_version=//p' /tmp/feed-info.txt)"
           available="$(sed -n 's/^update_available=//p' /tmp/feed-info.txt)"
           echo "version=$version" >> "$GITHUB_OUTPUT"
@@ -55,15 +55,15 @@ jobs:
           fi
       - name: Build a new pruned feed
         if: steps.feed.outputs.available == 'true' || inputs.force_source_rebuild == true || steps.release.outputs.exists != 'true'
-        run: uv run cykelpatag pipeline update --days 90
+        run: uv run cykelombord pipeline update --days 90
       - name: Reuse the current pruned feed
         if: steps.feed.outputs.available != 'true' && inputs.force_source_rebuild != true && steps.release.outputs.exists == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern bike.gtfs.zip --pattern manifest.json --pattern route-metadata.json --pattern rules-resolved.json --dir data/generated/gtfs
-          uv run cykelpatag gtfs validate
-          uv run cykelpatag router build --days 90
+          uv run cykelombord gtfs validate
+          uv run cykelombord router build --days 90
       - name: Replace the rolling release assets
         uses: ncipollo/release-action@v1
         with:

@@ -5,8 +5,8 @@ from typing import Any
 import duckdb
 import pytest
 
-from cykelpatag import gtfs
-from cykelpatag.gtfs import (
+from cykelombord import gtfs
+from cykelombord.gtfs import (
     GtfsError,
     _resolve_rules,
     _select_routes,
@@ -14,7 +14,7 @@ from cykelpatag.gtfs import (
     fetch_gtfs_feed_version,
     is_gtfs_update_available,
 )
-from cykelpatag.rules import Ruleset
+from cykelombord.rules import Ruleset
 
 
 def _write_csv(path: Path, fieldnames: list[str], rows: list[dict[str, str]]) -> None:
