@@ -3,8 +3,17 @@ from pathlib import Path
 from typing import Any
 
 import duckdb
+import pytest
 
-from cykelpatag.gtfs import _resolve_rules, _select_routes, _write_pruned_feed
+from cykelpatag import gtfs
+from cykelpatag.gtfs import (
+    GtfsError,
+    _resolve_rules,
+    _select_routes,
+    _write_pruned_feed,
+    fetch_gtfs_feed_version,
+    is_gtfs_update_available,
+)
 from cykelpatag.rules import Ruleset
 
 
@@ -299,3 +308,51 @@ def test_exact_reviewed_agency_alias_resolves_a_rule(tmp_path: Path) -> None:
         resolutions = _resolve_rules(ruleset, source, connection)
 
     assert resolutions[0]["status"] == "resolved"
+
+
+class _FeedInfoResponse:
+    text = (
+        "feed_id,feed_publisher_name,feed_publisher_url,feed_lang,feed_version\n"
+        "SE,Samtrafiken,https://example.invalid,sv,2026-08-09\n"
+    )
+
+    def raise_for_status(self) -> None:
+        pass
+
+
+class _FeedInfoClient:
+    def __enter__(self) -> "_FeedInfoClient":
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        pass
+
+    def get(self, url: str) -> _FeedInfoResponse:
+        assert url == "https://example.invalid/feed_info.txt"
+        return _FeedInfoResponse()
+
+
+def test_gtfs_update_check_compares_feed_version_with_system_date(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(gtfs.httpx, "Client", lambda **_: _FeedInfoClient())
+
+    version = fetch_gtfs_feed_version("https://example.invalid/feed_info.txt")
+
+    assert version.isoformat() == "2026-08-09"
+    assert is_gtfs_update_available(today=version, feed_version=version)
+    assert not is_gtfs_update_available(today=version.replace(day=10), feed_version=version)
+
+
+def test_gtfs_update_check_rejects_invalid_feed_version(monkeypatch: pytest.MonkeyPatch) -> None:
+    class InvalidResponse(_FeedInfoResponse):
+        text = "feed_id,feed_version\nSE,not-a-date\n"
+
+    class InvalidClient(_FeedInfoClient):
+        def get(self, url: str) -> InvalidResponse:
+            return InvalidResponse()
+
+    monkeypatch.setattr(gtfs.httpx, "Client", lambda **_: InvalidClient())
+
+    with pytest.raises(GtfsError, match="not an ISO date"):
+        fetch_gtfs_feed_version()

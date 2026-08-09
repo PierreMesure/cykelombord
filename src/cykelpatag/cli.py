@@ -6,7 +6,13 @@ from typing import Annotated
 
 import typer
 
-from cykelpatag.gtfs import DEFAULT_GTFS_URL, GtfsError, build_gtfs
+from cykelpatag.gtfs import (
+    DEFAULT_GTFS_URL,
+    GtfsError,
+    build_gtfs,
+    fetch_gtfs_feed_version,
+    is_gtfs_update_available,
+)
 from cykelpatag.guide import DEFAULT_MARKDOWN_PAGE_URL, GuideError, update_guide
 from cykelpatag.router import RouterBuildError, build_router_data
 from cykelpatag.rules import RulesError, load_ruleset
@@ -122,6 +128,19 @@ def gtfs_build(
         f"Kept {result.kept_trip_count} trips; resolved {result.resolved_rule_count} rules, "
         f"unresolved {result.unresolved_rule_count}."
     )
+
+
+@gtfs_app.command("has-update")
+def gtfs_has_update() -> None:
+    """Print whether Trafiklab has published today's GTFS feed version."""
+    try:
+        version = fetch_gtfs_feed_version()
+        available = is_gtfs_update_available(today=date.today(), feed_version=version)
+    except GtfsError as error:
+        typer.echo(f"GTFS update check failed: {error}", err=True)
+        raise typer.Exit(code=1) from error
+    typer.echo(f"feed_version={version.isoformat()}")
+    typer.echo(f"update_available={str(available).lower()}")
 
 
 @gtfs_app.command("validate")

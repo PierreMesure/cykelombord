@@ -11,7 +11,7 @@ import zipfile
 from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 from typing import Any
@@ -24,6 +24,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from cykelpatag.rules import Rule, Ruleset, load_ruleset
 
 DEFAULT_GTFS_URL = "https://api.resrobot.se/gtfs/sweden.zip"
+DEFAULT_GTFS_FEED_INFO_URL = "https://api.resrobot.se/samtrafiken/gtfs/feed_info.txt"
 REQUIRED_GTFS_FILES = frozenset(
     {"agency.txt", "routes.txt", "trips.txt", "stop_times.txt", "stops.txt"}
 )
@@ -39,6 +40,44 @@ STATION_SUFFIXES = ("centralstation", "resecentrum", "station", "stasjon")
 
 class GtfsError(RuntimeError):
     """Raised when the GTFS feed cannot be safely downloaded or pruned."""
+
+
+def fetch_gtfs_feed_version(url: str = DEFAULT_GTFS_FEED_INFO_URL) -> date:
+    """Return the ISO date published as GTFS Sverige 2's ``feed_version``."""
+    try:
+        with httpx.Client(follow_redirects=True, timeout=30.0) as client:
+            response = client.get(url)
+            response.raise_for_status()
+    except httpx.HTTPStatusError as error:
+        raise GtfsError(
+            f"GTFS feed-info download returned HTTP {error.response.status_code}."
+        ) from error
+    except httpx.HTTPError as error:
+        raise GtfsError(
+            f"Could not download GTFS feed-info ({type(error).__name__}); check network access."
+        ) from error
+
+    rows = list(csv.DictReader(response.text.splitlines()))
+    if len(rows) != 1 or not rows[0].get("feed_version"):
+        raise GtfsError("GTFS feed-info does not contain exactly one feed_version value.")
+    try:
+        return date.fromisoformat(rows[0]["feed_version"])
+    except ValueError as error:
+        raise GtfsError("GTFS feed-info feed_version is not an ISO date.") from error
+
+
+def is_gtfs_update_available(
+    *,
+    today: date | None = None,
+    url: str = DEFAULT_GTFS_FEED_INFO_URL,
+    feed_version: date | None = None,
+) -> bool:
+    """Return whether Trafiklab has published a feed version for today's date.
+
+    ``today`` is injectable so the comparison is deterministic in tests;
+    production uses the system date.
+    """
+    return (feed_version or fetch_gtfs_feed_version(url)) >= (today or date.today())
 
 
 class GtfsSettings(BaseSettings):

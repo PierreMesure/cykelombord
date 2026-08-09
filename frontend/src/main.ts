@@ -2,6 +2,7 @@ import "./style.css";
 import "iconify-icon";
 import trainIcon from "@iconify/icons-material-symbols/train";
 import { addIcon } from "iconify-icon";
+import { routerDataUrl } from "./router-data";
 
 // Keep the single glyph local so the planner remains functional offline.
 addIcon("material-symbols:train", trainIcon);
@@ -171,7 +172,7 @@ function loadDate(value: string): void {
 
 async function loadManifest(): Promise<void> {
   try {
-    const response = await fetch("/router/router-manifest.json");
+    const response = await fetch(routerDataUrl("router-manifest.json"));
     if (!response.ok) throw new Error("missing manifest");
     const manifest = (await response.json()) as { available_dates?: Array<{ date: string }> };
     const dates = manifest.available_dates?.map((item) => item.date) ?? [];

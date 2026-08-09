@@ -1,0 +1,82 @@
+name: Publish router data
+
+on:
+  schedule:
+    - cron: "15 06 * * *"
+  workflow_dispatch:
+    inputs:
+      force_source_rebuild:
+        description: Re-download and prune GTFS even when feed_info is not dated today
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: router-data
+      TRAFIKLAB_GTFS_API_KEY: ${{ secrets.TRAFIKLAB_GTFS_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: uv sync --locked
+      - run: npm --prefix frontend ci
+      - name: Check Trafiklab feed version
+        id: feed
+        run: |
+          uv run cykelpatag gtfs has-update | tee /tmp/feed-info.txt
+          version="$(sed -n 's/^feed_version=//p' /tmp/feed-info.txt)"
+          available="$(sed -n 's/^update_available=//p' /tmp/feed-info.txt)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "available=$available" >> "$GITHUB_OUTPUT"
+      - name: Check for a prior rolling release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Build a new pruned feed
+        if: steps.feed.outputs.available == 'true' || inputs.force_source_rebuild == true || steps.release.outputs.exists != 'true'
+        run: uv run cykelpatag pipeline update --days 90
+      - name: Reuse the current pruned feed
+        if: steps.feed.outputs.available != 'true' && inputs.force_source_rebuild != true && steps.release.outputs.exists == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern bike.gtfs.zip --pattern manifest.json --pattern route-metadata.json --pattern rules-resolved.json --dir data/generated/gtfs
+          uv run cykelpatag gtfs validate
+          uv run cykelpatag router build --days 90
+      - name: Replace the rolling release assets
+        uses: ncipollo/release-action@v1
+        with:
+          tag: router-data
+          commit: ${{ github.sha }}
+          name: Rolling router data
+          body: Rolling GTFS-derived router data. Assets are replaced on each successful daily build.
+          allowUpdates: true
+          removeArtifacts: true
+          replacesArtifacts: true
+          artifactErrorsFailBuild: true
+          makeLatest: true
+          artifacts: >-
+            data/generated/gtfs/bike.gtfs.zip,data/generated/gtfs/manifest.json,
+            data/generated/gtfs/route-metadata.json,data/generated/gtfs/rules-resolved.json,
+            data/generated/router/*,data/generated/validation/*

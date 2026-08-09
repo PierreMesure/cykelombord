@@ -1,4 +1,5 @@
 import { Query, Router, StopsIndex, Timetable } from "minotor";
+import { routerDataUrl } from "./router-data";
 
 type Request =
   | { type: "init"; date: string }
@@ -14,14 +15,14 @@ function toStop(stop: { id: number; name: string; platform?: string }) {
 }
 
 async function initialise(date: string): Promise<void> {
-  const timetableResponse = await fetch(`/router/timetable-${date}.bin`);
+  const timetableResponse = await fetch(routerDataUrl(`timetable-${date}.bin`));
   if (!timetableResponse.ok) {
     throw new Error("Kunde inte läsa den lokala tidtabellen. Kör först npm run prepare-router-data.");
   }
   if (!stopsIndex) {
     const [stopsResponse, metadataResponse] = await Promise.all([
-      fetch("/router/stops.bin"),
-      fetch("/router/route-metadata.json"),
+      fetch(routerDataUrl("stops.bin")),
+      fetch(routerDataUrl("route-metadata.json")),
     ]);
     if (!stopsResponse.ok || !metadataResponse.ok) {
       throw new Error("Kunde inte läsa den lokala tidtabellen. Kör först npm run prepare-router-data.");

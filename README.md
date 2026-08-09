@@ -1,6 +1,6 @@
-# Cykel på tåg
+# Cykel ombord
 
-Cykel på tåg aims to plan Swedish public-transport journeys on which a traveller can bring an
+Cykel ombord aims to plan Swedish public-transport journeys on which a traveller can bring an
 assembled bicycle. It will combine Trafiklab timetable data with structured rules derived from
 Naturskyddsföreningen's regularly updated guide.
 
@@ -166,8 +166,11 @@ Pass `--start-date YYYY-MM-DD` to `router build` or `pipeline update` for a repr
 ## Data and attribution
 
 Downloaded source material is not committed. Put the current guide in `data/source/` when the
-conversion milestone begins. Generated artifacts belong in `data/generated/` until the publishing
-strategy is implemented.
+conversion milestone begins. Generated artifacts are published daily to the rolling GitHub Release
+tag [`router-data`](https://github.com/PierreMesure/cykelpa-ta-g/releases/tag/router-data). The
+frontend uses the tag's stable asset URLs in production; the release is updated in place, so it
+contains only the current pruned GTFS and rolling 90-day router set. Locally, the frontend continues
+to read `/router/` after `npm --prefix frontend run prepare-router-data`.
 
 The eventual application must display the attribution required by Trafiklab's data licence and
 retain a source URL and retrieval date for every manually maintained bicycle rule.
