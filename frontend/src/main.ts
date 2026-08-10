@@ -324,7 +324,7 @@ form.addEventListener("submit", (event) => {
     }
     results.replaceChildren(fragment);
   };
-  results.innerHTML = `<p class="empty">Söker i den lokala tidtabellen …</p>`;
+  results.innerHTML = `<p class="empty empty-result">Söker...</p>`;
   worker.postMessage({
     type: "route",
     date: dateInput.value,

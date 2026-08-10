@@ -202,6 +202,28 @@ def test_higher_priority_prohibition_overrides_an_allowed_route(tmp_path: Path) 
     assert dropped == []
 
 
+def test_excluded_stop_removes_routes_that_serve_it(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    source.mkdir()
+    _fixture_gtfs(source)
+    ruleset = _ruleset()
+    excluded_rules = [
+        rule.model_copy(
+            update={
+                "match": rule.match.model_copy(update={"excluded_stops": ["Alpha"]})
+            }
+        )
+        for rule in ruleset.rules
+    ]
+    ruleset = ruleset.model_copy(update={"rules": excluded_rules})
+
+    with duckdb.connect() as connection:
+        resolutions = _resolve_rules(ruleset, source, connection)
+
+    assert all(item["status"] == "unresolved" for item in resolutions)
+    assert all(item["route_ids"] == [] for item in resolutions)
+
+
 def test_temporal_prohibition_is_deferred_from_all_date_pruning() -> None:
     resolutions: list[dict[str, Any]] = [
         {

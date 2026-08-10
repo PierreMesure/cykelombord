@@ -23,6 +23,7 @@ class Match(_StrictModel):
     agency_aliases: list[str] = Field(default_factory=list)
     services: list[str] = Field(default_factory=list)
     corridors: list[str] = Field(default_factory=list)
+    excluded_stops: list[str] = Field(default_factory=list)
     vehicle_types: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
@@ -32,6 +33,7 @@ class Match(_StrictModel):
             or self.agency_aliases
             or self.services
             or self.corridors
+            or self.excluded_stops
             or self.vehicle_types
         ):
             raise ValueError(

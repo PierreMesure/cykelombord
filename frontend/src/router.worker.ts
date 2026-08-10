@@ -22,6 +22,25 @@ function toStop(stop: { id: number; name: string; platform?: string }) {
   return { id: stop.id, name: stop.name, platform: stop.platform };
 }
 
+function isLowTraffic(date: string, time: number): boolean {
+  const [year, month, day] = date.split("-").map(Number);
+  const weekday = new Date(Date.UTC(year!, month! - 1, day!)).getUTCDay();
+  if (weekday === 0 || weekday === 6) return true;
+  return (time >= 9 * 60 && time < 15 * 60) || time >= 18 * 60;
+}
+
+function isBikeRestrictedSlLeg(
+  date: string,
+  leg: { departureTime: number; route: { name: string } },
+): boolean {
+  const metadata = routeMetadata[leg.route.name] ?? [];
+  const isSlRail = metadata.some(
+    (item) =>
+      item.agency === "SL" && /pendeltåg|roslagsbanan/i.test(item.service),
+  );
+  return isSlRail && !isLowTraffic(date, leg.departureTime);
+}
+
 async function initialise(date: string, notify = true): Promise<Router> {
   let activeRouter = routers.get(date);
   if (!activeRouter) {
@@ -72,10 +91,20 @@ self.addEventListener("message", ({ data }: MessageEvent<Request>) => {
               .to(data.to)
               .departureTime(data.departureTime)
               .lastDepartureTime(data.departureTime + 120)
+              // The search window is a hard departure-time constraint. The
+              // Minotor default also compares with departures after the
+              // window, which can suppress valid long, multi-leg journeys
+              // when a later train arrives sooner.
+              .rangeOptions({ optimizeBeyondLatestDeparture: false })
               .maxTransfers(4)
               .build(),
           )
           .getRoutes()
+          .filter((route) =>
+            !route.legs.some(
+              (leg) => "route" in leg && isBikeRestrictedSlLeg(data.date, leg),
+            ),
+          )
           .slice(0, 5);
         self.postMessage({
           type: "route",

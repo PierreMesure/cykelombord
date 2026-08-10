@@ -300,8 +300,33 @@ def _resolve_rule_routes(
                 for field in ("route_short_name", "route_long_name", "route_desc")
             )
         }
+    if rule.match.excluded_stops:
+        excluded_names = {_normalise(value) for value in rule.match.excluded_stops}
+        excluded_stop_ids = {
+            row["stop_id"]
+            for row in stops
+            if excluded_names & _stop_name_keys(row.get("stop_name", ""))
+        }
+        if not excluded_stop_ids:
+            return [], "no excluded stop matched the GTFS feed"
+        connection.execute("DROP TABLE IF EXISTS rule_excluded_stops")
+        connection.execute("DROP TABLE IF EXISTS rule_candidate_routes")
+        _insert_ids(connection, "rule_excluded_stops", "stop_id", excluded_stop_ids)
+        _insert_ids(connection, "rule_candidate_routes", "route_id", candidate_routes)
+        excluded_routes = connection.execute(
+            """
+            SELECT DISTINCT trips.route_id
+            FROM trips
+            JOIN stop_times USING (trip_id)
+            WHERE trips.route_id IN (SELECT route_id FROM rule_candidate_routes)
+              AND stop_times.stop_id IN (SELECT stop_id FROM rule_excluded_stops)
+            """
+        ).fetchall()
+        candidate_routes -= {str(row[0]) for row in excluded_routes}
+        connection.execute("DROP TABLE rule_excluded_stops")
+        connection.execute("DROP TABLE rule_candidate_routes")
     if not candidate_routes:
-        return [], "no route matched agency, mode, and service selectors"
+        return [], "no route matched agency, mode, service, and stop selectors"
 
     if not rule.match.corridors:
         return sorted(candidate_routes), None

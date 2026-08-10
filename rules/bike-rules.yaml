@@ -250,6 +250,7 @@ rules:
       modes: [rail]
       agencies: [SL]
       services: [pendeltåg, Roslagsbanan]
+      excluded_stops: [Stockholm City]
     bicycle:
       permission: conditional
       bike_booking: unknown

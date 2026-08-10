@@ -42,6 +42,7 @@ rules:
       agency_aliases: [GTFS operator name] # optional, only when the source spelling differs
       services: [Service name]       # optional, guide spelling
       corridors: [Origin–destination] # optional, guide spelling
+      excluded_stops: [Station name]  # optional, routes serving these stops are excluded
       vehicle_types: [electric]      # optional
     bicycle:
       permission: allowed            # allowed, not_allowed, packed_only, conditional, unknown
