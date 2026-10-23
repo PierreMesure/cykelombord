@@ -11,7 +11,7 @@
   },
   "devDependencies": {
     "typescript": "^5.9.2",
-    "vite": "^7.1.1"
+    "vite": "^7.3.7"
   },
   "dependencies": {
     "@iconify/icons-material-symbols": "^1.2.58",
